@@ -1,6 +1,6 @@
 # Coin Village 5 (작성 중)  
 
-### - 소스 설치 순서 
+### **소스 설치 순서** 
 
 ##### API 키 설정
 <pre>
@@ -8,33 +8,26 @@
 [Binance API](https://www.binance.com/en/binance-api)
 </pre>
 
-##### Git 클론
+##### 소스 셋팅
 <pre>
+- Git 클론
 git clone https://github.com/DiShinHub/proj_coin_village_v5
-</pre>
 
-##### Docker 설치
-<pre>
+- Docker 설치
 https://www.docker.com/
-</pre>
 
-##### 배치 파일을 사용하여 빌드
-<pre>
+- 배치 파일을 사용하여 빌드
 ./_ascm/bat/cv-docker-compose-build.bat
-</pre>
 
-##### 기본 DB 초기화
-<pre>
+- 기본 DB 초기 셋팅
 ./_ascm/bat/cv-postgres-init.bat
-</pre>
 
-##### 소스 실행
-<pre>
+- 소스 실행
 ./_ascm/bat/cv-docker-compose-reload.bat
 </pre>
-
 ---
-### - 폴더 트리
+
+### **폴더 트리**
 
 <pre>
 📦 proj_cv5
