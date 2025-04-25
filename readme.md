@@ -7,6 +7,8 @@
 <h3>
 folder tree
 </h3>
+
+<pre>
 📦 proj_cv5
 ├── 📂 _ascm                            # 소스 컨트롤 오토메이션 
 ├── 📂 apps                             # 앱
@@ -38,3 +40,5 @@ folder tree
 ├── poetry.lock                 # 의존성 관리
 ├── pyproject.toml              # 의존성 관리 
 └── readme.md                   # 프로젝트 개요
+
+</pre>

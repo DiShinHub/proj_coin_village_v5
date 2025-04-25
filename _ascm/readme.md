@@ -1,7 +1,6 @@
 # Automated Source Control Management  
-### 프로젝트 소스 관리 오토메이션  
 
-## 소스 설치 순서
+### 소스 설치 순서
 
 1. **API 키 설정** (보강 중)  
 [Upbit Open API Guide](https://upbit.com/service_center/open_api_guide)  
