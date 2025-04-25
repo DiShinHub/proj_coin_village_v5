@@ -4,8 +4,11 @@
 
 ##### API 키 설정
 <pre>
-[Upbit Open API Guide](https://upbit.com/service_center/open_api_guide)  
-[Binance API](https://www.binance.com/en/binance-api)
+- Upbit Open API Guide
+https://upbit.com/service_center/open_api_guide
+
+- Binance API
+https://www.binance.com/en/binance-api
 </pre>
 
 ##### 소스 셋팅
@@ -16,10 +19,10 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 - Docker 설치
 https://www.docker.com/
 
-- 배치 파일을 사용하여 빌드
+- 소스 빌드
 ./_ascm/bat/cv-docker-compose-build.bat
 
-- 기본 DB 초기 셋팅
+- DB 이닛
 ./_ascm/bat/cv-postgres-init.bat
 
 - 소스 실행
