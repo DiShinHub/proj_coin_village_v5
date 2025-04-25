@@ -1,29 +1,34 @@
 # Automated Source Control Management  
 
-### 소스 설치 순서
+### 소스 설치 순서 (보강 중)  
 
-
+#### API 키 설정
 <pre>
-1. **API 키 설정** (보강 중)  
 [Upbit Open API Guide](https://upbit.com/service_center/open_api_guide)  
 [Binance API](https://www.binance.com/en/binance-api)
 </pre>
+
+#### Git 클론
 <pre>
-2. **Git 클론**  
 git clone https://github.com/DiShinHub/proj_coin_village_v5
 </pre>
+
+#### Docker 설치
 <pre>
-3. Docker 설치
 https://www.docker.com/
 </pre>
+
+#### 배치 파일을 사용하여 빌드
 <pre>
-4. 배치 파일을 사용하여 빌드
 ./cv-docker-compose-build.bat
 </pre>
+
+#### 기본 DB 초기화
 <pre>
-5. 기본 DB 초기화
 ./cv-postgres-init.bat
 </pre>
-6. 소스 실행
+
+#### 소스 실행
+<pre>
 ./cv-docker-compose-reload.bat
 </pre>
