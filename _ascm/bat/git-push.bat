@@ -2,13 +2,13 @@
 
 cd ../
 
-git pull origin main
+git pull origin master
 
 git add .
 
 git commit -m "."
 
-git push -u origin main
+git push -u origin master
 
 REM 작업 완료 메시지 출력
 echo Git Pushed!
