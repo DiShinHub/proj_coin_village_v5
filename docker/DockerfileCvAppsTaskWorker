@@ -1,0 +1,25 @@
+FROM python:3.10.9
+
+SHELL ["/bin/bash", "-c"]
+
+ENV APP_LOG_LOCATION=logs
+
+ENV TZ=Asia/Seoul
+ENV APP_PATH=/apps
+ENV SERVICE_NAME=task_worker
+
+WORKDIR ${APP_PATH}
+
+COPY ../apps/${SERVICE_NAME} ${APP_PATH}/${SERVICE_NAME}
+COPY ../shares ${APP_PATH}/shares
+COPY ../poetry.lock ${APP_PATH}
+COPY ../pyproject.toml ${APP_PATH}
+
+ENV PYTHONPATH=${APP_PATH}:${APP_PATH}/app
+
+RUN pip install poetry
+ENV POETRY_HOME /usr/local
+
+RUN poetry install --no-root --without cpu,api,scheduler,jupyter
+RUN chmod +x /apps/${SERVICE_NAME}/main.sh
+CMD /bin/bash -c "/apps/$SERVICE_NAME/main.sh"

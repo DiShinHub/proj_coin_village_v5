@@ -1,0 +1,1 @@
+poetry run python /apps/scheduler/main.py 

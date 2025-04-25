@@ -1,0 +1,114 @@
+version: '1.1'
+
+services:
+
+  cv-apps-scheduler:
+    container_name: ${SERVICE_NAME_SCHEDULER}
+    build:
+      context: ../
+      dockerfile: ./docker/DockerfileCvAppsScheduler
+    ports:
+      - "${SERVICE_PORT_SCHEDULER}:${SERVICE_PORT_SCHEDULER}"
+    volumes:
+      - ./volumes/logs/${SERVICE_NAME_SCHEDULER}:/apps/logs/${SERVICE_NAME_SCHEDULER}
+      - ../apps/scheduler:/apps/scheduler
+      - ../shares:/apps/shares
+    environment:
+      - TZ=${TIMEZONE}
+      - CONTAINER_NAME=${SERVICE_NAME_SCHEDULER}
+      - APP_PORT=${SERVICE_PORT_SCHEDULER}
+      - APP_LOG_LOCATION=/apps/logs/${SERVICE_NAME_SCHEDULER}
+      - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
+      - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${APP_NAME}-redis-compose
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - UPBIT_ACCESS_KEY=${UPBIT_ACCESS_KEY}
+      - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
+      - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
+    depends_on:
+      - cv-db-postgres
+      - cv-redis
+
+  cv-apps-task-worker:
+    container_name: ${SERVICE_NAME_TASK_WORKER}
+    build:
+      context: ../
+      dockerfile: ./docker/DockerfileCvAppsTaskWorker
+    ports:
+      - "${SERVICE_PORT_TASK_WORKER}:${SERVICE_PORT_TASK_WORKER}"
+    volumes:
+      - ./volumes/logs/${SERVICE_NAME_TASK_WORKER}:/apps/logs/${SERVICE_NAME_TASK_WORKER}
+      - ../apps/task_worker:/apps/task_worker
+      - ../shares:/apps/shares
+    environment:
+      - TZ=${TIMEZONE}
+      - CONTAINER_NAME=${SERVICE_NAME_TASK_WORKER}
+      - APP_PORT=${SERVICE_PORT_TASK_WORKER}
+      - APP_LOG_LOCATION=/apps/logs/${SERVICE_NAME_TASK_WORKER}
+      - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
+      - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${APP_NAME}-redis-compose
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - UPBIT_ACCESS_KEY=${UPBIT_ACCESS_KEY}
+      - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
+      - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
+    depends_on:
+      - cv-db-postgres
+      - cv-redis
+
+  cv-db-postgres:
+    container_name: ${APP_NAME}-db-postgres-compose
+    image: postgres:14.6-alpine
+    ports:
+      - "${POSTGRES_CONTAINER_PORT}:5432"
+    volumes:
+      - ./volumes/data/db-postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all"]
+    environment:
+      - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
+      - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=${POSTGRES_TIMEZONE}
+    restart: unless-stopped
+
+  cv-redis:
+    container_name: ${APP_NAME}-redis-compose
+    image: redis:5.0.7
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: ["redis-server"]
+    restart: unless-stopped
+    
+  cv-object-storage-minio:
+    container_name: ${APP_NAME}-object-storage-minio-compose
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_SERVICE_PORT}:${MINIO_SERVICE_PORT}"
+      - "${MINIO_CONSOLE_PORT}:${MINIO_CONSOLE_PORT}"
+    volumes:
+      - ./volumes/data/object-storage-minio:/data
+    command: server /data --console-address ":${MINIO_CONSOLE_PORT}"
+    environment:
+      - MINIO_INTERNAL_URL=${MINIO_INTERNAL_URL}
+      - MINIO_EXTERNAL_URL=${MINIO_EXTERNAL_URL}
+      - MINIO_PRESIGN_URL_EXPIRE=${MINIO_PRESIGN_URL_EXPIRE}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+    shm_size: '1gb'
+    restart: unless-stopped
