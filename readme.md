@@ -1,6 +1,7 @@
 # Coin Village 5 (작성 중)  
 
-#### 소스 설치 순서 
+#### - 소스 설치 순서 
+---
 
 ##### API 키 설정
 <pre>
@@ -33,8 +34,9 @@ https://www.docker.com/
 ./_ascm/bat/cv-docker-compose-reload.bat
 </pre>
 
-
-#### 폴더 트리
+---
+#### - 폴더 트리
+---
 
 <pre>
 📦 proj_cv5
