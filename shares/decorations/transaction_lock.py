@@ -6,8 +6,6 @@ from functools import wraps
 import time
 import datetime
     
-cnt = 0 
-
 def lock_transaction(lock_key, ttl=10, hold=0):
     """
     def description : 트랜잭션 락
@@ -24,7 +22,7 @@ def lock_transaction(lock_key, ttl=10, hold=0):
         @wraps(func)
         def wrapper(*args, **kwargs):
             
-            cnt+=1
+            cnt=0
             system_module_log.info(f"wait transaction start : {str(datetime.datetime.now())}, {cnt}")
             
             # 논리적 충돌 방지를 위한 트릭킹 

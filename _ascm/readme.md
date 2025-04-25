@@ -7,9 +7,15 @@ automated source control management
 <h3>
 소스 설치 순서 
 <pre>
+0. api key setup(보강 중)
+https://upbit.com/service_center/open_api_guide
+https://www.binance.com/en/binance-api
+
 1. git clone
+https://github.com/DiShinHub/proj_coin_village_v5
 
 2. install docker
+https://www.docker.com/
 
 3. build with batch 
 ./cv-docker-compose-build.bat
