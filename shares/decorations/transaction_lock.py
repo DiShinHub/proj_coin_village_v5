@@ -4,7 +4,6 @@ from shares.modules.redis import redis_client
 from functools import wraps
 
 import time
-import datetime
     
 def lock_transaction(lock_key, ttl=10, hold=0):
     """
@@ -22,27 +21,18 @@ def lock_transaction(lock_key, ttl=10, hold=0):
         @wraps(func)
         def wrapper(*args, **kwargs):
             
-            cnt=0
-            system_module_log.info(f"wait transaction start : {str(datetime.datetime.now())}, {cnt}")
-            
             # 논리적 충돌 방지를 위한 트릭킹 
-            time.sleep(0.5)
+            time.sleep(0.25)
             if redis_client.exists(lock_key):
                 raise Exception(f"blocked by overlab transaction, block type 1")
             
-            system_module_log.info(f"wait transaction done : {str(datetime.datetime.now())}, {cnt}")
-            
             try:
-                system_module_log.info(f"set lock transaction start : {str(datetime.datetime.now())}, {cnt}")
                 
                 # lock transaction
                 res = redis_client.set(lock_key, "1", ttl, nx=True) # nx: key가 없을 때만 set을 할 수 있다
                 
-                system_module_log.info(f"set lock transaction done : {str(datetime.datetime.now())}, {cnt}")
-                
                 if res == True:
                     # execute transaction
-                    system_module_log.info(f"execute transaction start : {str(datetime.datetime.now())}, {cnt}")
                     return func(*args, **kwargs)
                 
                 else:
@@ -54,19 +44,13 @@ def lock_transaction(lock_key, ttl=10, hold=0):
             
             finally:
                 
-                system_module_log.info(f"execute transaction done : {str(datetime.datetime.now())}, {cnt}")
-                system_module_log.info(f"hold transaction start : {str(datetime.datetime.now())}, {cnt}")
-                
                 # hold transaction
                 if isinstance(hold, int):
                     if hold > 0:
                         time.sleep(hold) 
-                    
-                system_module_log.info(f"hold transaction done : {str(datetime.datetime.now())}, {cnt}")
-                system_module_log.info(f"unlock transaction start : {str(datetime.datetime.now())}, {cnt}")
+                        
                 # unlock transaction
                 redis_client.delete(lock_key)
-                system_module_log.info(f"unlock transaction done : {str(datetime.datetime.now())}, {cnt}")
                 
         return wrapper
     return decorator
