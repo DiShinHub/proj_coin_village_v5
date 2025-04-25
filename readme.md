@@ -13,20 +13,24 @@ https://www.binance.com/en/binance-api
 
 ##### 소스 셋팅
 <pre>
-- Git 클론
-git clone https://github.com/DiShinHub/proj_coin_village_v5
-
 - Docker 설치
 https://www.docker.com/
 
-- 소스 빌드
-./_ascm/bat/cv-docker-compose-build.bat
+- Git 클론
+git clone https://github.com/DiShinHub/proj_coin_village_v5
 
-- DB 이닛
-./_ascm/bat/cv-postgres-init.bat
+- env 설정
+담당자 문의
+
+- 프로젝트 셋팅
+    └── 소스 빌드
+    ./cv-docker-compose-build.bat
+
+    └── DB 이닛
+    ./cv-postgres-init.bat
 
 - 소스 실행
-./_ascm/bat/cv-docker-compose-reload.bat
+./cv-docker-compose-reload.bat
 </pre>
 ---
 

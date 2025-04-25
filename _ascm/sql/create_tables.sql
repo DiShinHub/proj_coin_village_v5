@@ -2,7 +2,7 @@
 
 -- Drop table
 
--- DROP TABLE public.reusable_data;
+DROP TABLE IF EXISTS public.reusable_data;
 
 CREATE TABLE public.reusable_data (
 	seq serial4 NOT NULL,
@@ -17,18 +17,18 @@ CREATE INDEX ix_reusable_data_key ON public.reusable_data USING btree (key);
 
 -- Table Triggers
 
-CREATE TRIGGER reusable_data_trigger AFTER
-INSERT
-    OR
-UPDATE
-    ON
-    public.reusable_data FOR EACH ROW EXECUTE FUNCTION remove_old_reusable_data();
+-- CREATE TRIGGER reusable_data_trigger AFTER
+-- INSERT
+--     OR
+-- UPDATE
+--     ON
+--     public.reusable_data FOR EACH ROW EXECUTE FUNCTION remove_old_reusable_data();
 
 -- public.runnable_service_options definition
 
 -- Drop table
 
--- DROP TABLE public.runnable_service_options;
+DROP TABLE IF EXISTS public.runnable_service_options;
 
 CREATE TABLE public.runnable_service_options (
 	seq serial4 NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE public.runnable_service_options (
 
 -- Drop table
 
--- DROP TABLE public.runnable_services;
+DROP TABLE IF EXISTS public.runnable_services;
 
 CREATE TABLE public.runnable_services (
 	seq serial4 NOT NULL,
