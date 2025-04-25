@@ -1,6 +1,6 @@
-# Automated Source Control Management  
+# Automated Source Control Management (작성 중)  
 
-### 소스 설치 순서 (보강 중)  
+### 소스 설치 순서 
 
 #### API 키 설정
 <pre>
