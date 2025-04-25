@@ -1,5 +1,7 @@
 @echo off
 
+cd ../
+
 REM 최신 변경 사항을 가져오기
 git pull origin main
 

@@ -10,7 +10,7 @@ for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
     if not "%%A"=="" set %%A=%%B
 )
 
-cd ../../build/sql
+cd ../../_ascm/sql
 
 REM DB 접속 정보
 set PGHOST=localhost
