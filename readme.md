@@ -40,15 +40,15 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 📦 proj_cv5
 ├── 📂 _ascm                            # 소스 컨트롤 오토메이션 
 ├── 📂 apps                             # 앱
-│   ├── 📂 scheduler                    # 스케쥴러 앱
-│   │   ├── 📂 dao                      # 다오
+│   ├── 📂 scheduler                    # 스케쥴러
+│   │   ├── 📂 dao                      
 │   │   │   └──{dao}.py
-│   │   ├── 📂 core                     # 코어
+│   │   ├── 📂 core                     
 │   │   │   └──{core}.py
-│   │   ├── 📂 service                  #
+│   │   ├── 📂 service                  
 │   │   │   ├── {service}_{version}.py
 │   │   │   └── {service}_{version}.py
-│   ├── 📂 task_worker                  # 테스크 워커 앱
+│   ├── 📂 task_worker                  # 테스크 워커
 │   │   ├── 📂 dao
 │   │   │   └──{dao}.py
 │   │   ├── 📂 core
