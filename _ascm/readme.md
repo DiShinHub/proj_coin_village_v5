@@ -6,6 +6,7 @@ automated source control management
 
 <h3>
 소스 설치 순서 
+</h3>
 <pre>
 0. api key setup(보강 중)
 https://upbit.com/service_center/open_api_guide
@@ -27,4 +28,3 @@ https://www.docker.com/
 ./cv-docker-compose-reload.bat
 
 </pre>
-</h3>
