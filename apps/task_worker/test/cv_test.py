@@ -72,17 +72,24 @@ class Test():
     def run(self):
         
         
-        current_price = 2554000.0
-        bbbb_price = 2628000.0
+        # current_price = 2554000.0
+        # bbbb_price = 2628000.0
         
-        self.log.info(f"price_diff_rate : {self.upbit.get_price_diff_rate(current_price, bbbb_price)}")
+        # self.log.info(f"price_diff_rate : {self.upbit.get_price_diff_rate(current_price, bbbb_price)}")
             
-        return 
+        # return 
         # datetime_list = generate_datetimes_by_min(terms=90, interval=5, n_days_ago=7) # 수집 구간 datetime 리스트 생성
         # self.log.info(f"datetime_list0 : {datetime_list[0]}")
         # self.log.info(f"datetime_list-1 : {datetime_list[-1]}")
         
-        # tick_datetime 기준으로 미래 값 조회 
+        """
+282536	KRW-BTC	2025-04-21 15:10:00.000 +0900	125350000.0	125092000.0	125200000.0	125157000.0	125093000.0	127044000.0	134194000.0	132779000.0	134386000.0	136600000.0	136102000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	sideways	sideways	sideways	sideways	125350000.0	125092000.0	125200000.0	125157000.0	125093000.0	127044000.0	134194000.0	132779000.0	134386000.0	136600000.0	136102000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	up	up	up	up
+282534	KRW-BTC	2025-04-21 15:05:00.000 +0900	125296000.0	125181000.0	125406000.0	125190000.0	124989000.0	127110000.0	134180000.0	132789000.0	134427000.0	136522000.0	136112000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	sideways	sideways	sideways	sideways	125296000.0	125181000.0	125406000.0	125190000.0	124989000.0	127110000.0	134180000.0	132789000.0	134427000.0	136522000.0	136112000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	up	up	up	up
+282532	KRW-BTC	2025-04-21 15:00:00.000 +0900	125309000.0	125301000.0	125417000.0	125300000.0	124936000.0	127271000.0	133968000.0	132805000.0	134216000.0	136508000.0	135996000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	sideways	sideways	sideways	sideways	125309000.0	125301000.0	125417000.0	125300000.0	124936000.0	127271000.0	133968000.0	132805000.0	134216000.0	136508000.0	135996000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	up	up	up	up
+282530	KRW-BTC	2025-04-21 14:55:00.000 +0900	125259000.0	125350000.0	125400000.0	125411000.0	124835000.0	127250000.0	133840000.0	132667000.0	134159000.0	136584000.0	135970000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	sideways	sideways	sideways	sideways	125259000.0	125350000.0	125400000.0	125411000.0	124835000.0	127250000.0	133840000.0	132667000.0	134159000.0	136584000.0	135970000.0	sideways	sideways	sideways	sideways	sideways	sideways	up	up	up	up	up
+        """
+        
+        # # tick_datetime 기준으로 미래 값 조회 
         
         # self.upbit.set_ticker("KRW-BTC")
         
@@ -100,12 +107,14 @@ class Test():
         
         # self.log.info(f"updown : {updown}")
         
-        # a = 122435000
-        # b = 126892000
+        a = 125350000
+        b = 125092000
         
-        # change_rate = ((b - a) / a) * 100
-        # change_rate = round(change_rate, 4)
-        # self.log.info(f"change_rate : {change_rate}")
+        change_rate = ((b - a) / a) * 100
+        change_rate = round(change_rate, 4)
+        self.log.info(f"change_rate : {change_rate}")
+        
+        return 
         # """
         # {
         # ontime_price : 122435000.0

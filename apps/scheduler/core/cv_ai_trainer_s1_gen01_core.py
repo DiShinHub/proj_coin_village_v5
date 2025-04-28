@@ -1,7 +1,7 @@
 from shares.modules.redis import r as redis_single
 from shares.modules.upbit import Upbit
 from shares.modules.minio import MinioModule
-from shares.functions.common_function import get_years_between_str, split_date_range_by_year, generate_micro_date
+from shares.functions.common_function import generate_micro_date
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
@@ -11,9 +11,8 @@ from sklearn.preprocessing import StandardScaler
 
 import numpy as np
 import pandas as pd
+import datetime
 import os
-
-
 import inspect
 
 class CvAiTrainerS1Gen01Core():
@@ -25,12 +24,24 @@ class CvAiTrainerS1Gen01Core():
         self.upbit = Upbit()
         self.minio = MinioModule()
         
+        self.model_folder_path = ""
+    
+    def set_model_folder_path(self):
+        
+        self.model_folder_path = self.minio.generate_minio_folder_path()
+        return self.model_folder_path
+        
+    def set_hyper_parameters(self, time_steps, batch_size, epochs, early_stop=False):
+        
+        self.time_steps = time_steps  # 시퀀스 길이 설정
+        self.batch_size = batch_size
+        self.epochs = epochs
+        if early_stop:
+            self.early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True) # 조기 종료 콜백 설정
+        
     def generate_model(self, ticker, df):
         
-        self.log.info(f"전체 학습 시작: {pd.Timestamp.now()}")
-        
-        # 대상 티커
-        ticker = ticker
+        self.redis.save_msg_on_Q(f"전체 학습 시작: {str(datetime.datetime.now())}")
             
         # 입출력 칼럼
         col_f = ['timestamp', 'weekday',
@@ -42,15 +53,13 @@ class CvAiTrainerS1Gen01Core():
         col_t = ['by_ontime_change_after_15min',
         'by_ontime_change_after_30min', 'by_ontime_change_after_1hour',
         'by_ontime_change_after_4hour', 'by_ontime_change_after_12hour',
-        'by_ontime_change_after_1day'
+        'by_ontime_change_after_1day',
+        'by_prev_change_after_15min',
+        'by_prev_change_after_30min', 'by_prev_change_after_1hour',
+        'by_prev_change_after_4hour', 'by_prev_change_after_12hour',
+        'by_prev_change_after_1day'
         ]
 
-        # 하이퍼파라미터
-        self.time_steps = 40  # 시퀀스 길이 설정
-        self.batch_size = 32
-        self.epochs = 20
-        self.early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True) # 조기 종료 콜백 설정
-        
         try:
             # 전처리
             data = df.copy()
@@ -67,9 +76,9 @@ class CvAiTrainerS1Gen01Core():
                 self.log.info(f"{idx + 1}/{len(col_t)} - {target} 모델 학습 시작...")
                 
                 # 저장경로 설정
-                local_path = self.minio.generate_local_path("h5", post_fix=f"{ticker}_{idx}")
+                local_path = self.minio.generate_local_path("h5")
                 local_path_list.append(local_path)
-                minio_path = self.minio.generate_minio_model_path(file_exe="h5", post_fix=f"{ticker}_{idx}")
+                minio_path = self.minio.generate_minio_model_path(folder_path=self.model_folder_path, file_name=f"{ticker}_{target}_{generate_micro_date()}", file_exe="h5")
                 
                 # 학습 데이터 셋팅
                 X, Y = data[col_f].values, data[target].values
@@ -82,12 +91,16 @@ class CvAiTrainerS1Gen01Core():
                 
                 # 모델 업로드
                 self.minio.upload_file(minio_path, local_path)
+                
+                self.log.info(f"{idx + 1}/{len(col_t)} - {target} 모델 학습 종료...")
+            
+            return
             
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
         
         finally:
-            self.log.info(f"{idx + 1}/{len(col_t)} - {target} 모델 학습 종료...")
+            self.redis.save_msg_on_Q(f"전체 학습 종료: {str(datetime.datetime.now())}")
             
             if local_path_list:
                 for local_path in local_path_list:

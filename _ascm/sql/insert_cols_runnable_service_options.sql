@@ -8,5 +8,12 @@ INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq
 	 ('dataset_generate_term','90',6,'Y'),
 	 ('scheduler_start_hour','1',6,'Y'),
 	 ('scheduler_start_min','0',6,'Y'),
-	 ('ticker_list','["KRW-BTC", "KRW-ETH", "KRW-SOL"]',6,'Y')
+	 ('ticker_list','["KRW-BTC", "KRW-ETH", "KRW-SOL"]',6,'Y'),
+	 ('ticker_list','["KRW-BTC"]',7,'Y'),
+	 ('dataset_load_term',90,7,'Y'),
+	 ('time_steps',40,7,'Y'),
+	 ('batch_size',32,7,'Y'),
+	 ('epochs',20,7,'Y'),
+	 ('early_stop',1,7,'Y'),
+	 ('model_folder_path','',8,'Y')
 	 ;

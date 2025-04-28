@@ -20,7 +20,7 @@ class CvAiTrainerS1Gen01(OptionHandler):
     Service group : AiTrainer
     Service no : 1
     Generation : 01 
-    Product Name : Honey King
+    Product Name : King bee
     
     Role : 
     1. KRW-BTC 예측 모델 생성
@@ -31,9 +31,16 @@ class CvAiTrainerS1Gen01(OptionHandler):
         self.log = Log(os.path.basename(__file__)).get_logger()
         self.upbit_transaction_dao = UpbitTransactionDao()
         self.cv_ai_trainer_s1_gen01_core = CvAiTrainerS1Gen01Core(self.log)
-        
-        # TODO : INIT OPTION
-        self.dataset_load_term = 500
+         
+        # service attrs
+        self.ticker_list = None
+        self.dataset_load_term = None
+        self.time_steps = None  
+        self.batch_size = None
+        self.epochs = None
+        self.early_stop = None
+         
+        self.init_options(seq)
         
     def regist(self):
         
@@ -49,39 +56,61 @@ class CvAiTrainerS1Gen01(OptionHandler):
     def run(self):
         
         try:
+            # set model folder 
+            model_folder_path = self.cv_ai_trainer_s1_gen01_core.set_model_folder_path()
             
-            # --- 데이터 셋팅
-            ticker = "KRW-BTC"
+            # loop - generate models
+            for ticker in self.ticker_list:
+                df = self.get_dataframe(ticker)
+                self.generate_model(ticker, df)
             
-            now_date = str(datetime.datetime.now())[0:19]
-            n_days_ago = str(datetime.datetime.now() - datetime.timedelta(days=self.dataset_load_term))[0:19]   
-            self.year_list = get_years_between_str(n_days_ago, now_date)  # 대상연도
-            self.splited_year_dict = split_date_range_by_year(n_days_ago, now_date) 
-            
-            # --- 연단위 테이블 생성 (있으면 pass)
-            self.upbit_transaction_dao.create_yearly_table(self.year_list)
-        
-            # --- 데이터 조회
-            upbit_transactions_list = []
-            for year in self.year_list:
-                
-                table_name_f, table_name_t = self.upbit_transaction_dao.get_yearly_table_name(year)
-                splited_year = self.splited_year_dict[year]
-                start = splited_year[0]
-                end = splited_year[1]
-                
-                upbit_transactions = self.upbit_transaction_dao.get_upbit_transactions_between(table_name_f, table_name_t, ticker, start, end)
-                upbit_transactions_list += upbit_transactions
-            
-            # --- 데이터프레임으로 변환
-            df = pd.DataFrame(upbit_transactions_list)
-            df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
-            
-            # --- 모델 생성
-            self.cv_ai_trainer_s1_gen01_core.generate_model(
-                df=df,
-                ticker="KRW-BTC"
-            )
+            # TODO regist back tester or execute
+            self.log.info(f"model_folder_path : {model_folder_path}")
     
         except Exception as e:
-            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, ticker : {self.ticker} ,tick_datetime : {tick_datetime}, error : {str(e)}")
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            
+    def get_dataframe(self, ticker):
+        
+        # --- 데이터 셋팅
+        now_date = str(datetime.datetime.now())[0:19]
+        n_days_ago = str(datetime.datetime.now() - datetime.timedelta(days=self.dataset_load_term))[0:19]   
+        self.year_list = get_years_between_str(n_days_ago, now_date)  # 대상연도
+        self.splited_year_dict = split_date_range_by_year(n_days_ago, now_date) 
+        
+        # --- 연단위 테이블 생성 (있으면 pass)
+        self.upbit_transaction_dao.create_yearly_table(self.year_list)
+    
+        # --- 데이터 조회
+        upbit_transactions_list = []
+        for year in self.year_list:
+            
+            table_name_f, table_name_t = self.upbit_transaction_dao.get_yearly_table_name(year)
+            splited_year = self.splited_year_dict[year]
+            start = splited_year[0]
+            end = splited_year[1]
+            
+            upbit_transactions = self.upbit_transaction_dao.get_upbit_transactions_between(table_name_f, table_name_t, ticker, start, end)
+            upbit_transactions_list += upbit_transactions
+        
+        # --- 데이터프레임으로 변환
+        df = pd.DataFrame(upbit_transactions_list)
+        df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
+        
+        return df 
+    
+    def generate_model(self, ticker, df):
+        
+        # option 
+        self.cv_ai_trainer_s1_gen01_core.set_hyper_parameters(
+            time_steps=self.time_steps,
+            batch_size=self.batch_size,
+            epochs=self.epochs,
+            early_stop=self.early_stop
+        )
+        
+        # gen
+        self.cv_ai_trainer_s1_gen01_core.generate_model(
+            df=df,
+            ticker=ticker
+        )

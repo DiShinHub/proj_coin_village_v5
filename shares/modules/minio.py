@@ -11,7 +11,7 @@ class MinioModule():
 
     def __init__(self):
         self.log = system_module_log
-        self.external_client, self.minio_bucke = Config().set_minio() 
+        self.external_client, self.minio_bucket = Config().set_minio() 
 
         self.local_path = "minio"
         if not os.path.exists(self.local_path):
@@ -37,60 +37,20 @@ class MinioModule():
         
         return local_download_path
 
-    def generate_minio_datasets_path(self, file_exe, day=None, post_fix=None):
+    def generate_minio_folder_path(self):
         """
         def description : minio 저장 경로 셋팅
-
-        Parameters
-        ----------
-        file_exe : 파일 확장자 (str)
-
-        Returns
-        -------
-        minio_upload_path : minio 저장 경로 (str)
-        
         """
-        if day == None:
-            now = datetime.datetime.now()
-            now_month = now.strftime("%Y/%m")
-            now_day = now.strftime("%Y_%m_%d")
-            minio_upload_path = f"{now_month}/{now_day}.{file_exe}"
-
-        else:
-            target_date = datetime.datetime.strptime(day, '%Y-%m-%d')
-            target_month = target_date.strftime("%Y/%m")
-            target_day = target_date.strftime("%Y_%m_%d")
-            minio_upload_path = f"datasets/{target_month}/{target_day}_{post_fix}.{file_exe}"
-        
-        return minio_upload_path
-
-    def generate_minio_model_path(self, file_exe, day=None, post_fix=None):
-        """
-        def description : minio 저장 경로 셋팅
-
-        Parameters
-        ----------
-        file_exe : 파일 확장자 (str)
-
-        Returns
-        -------
-        minio_upload_path : minio 저장 경로 (str)
-        
-        """
-        if day == None:
-            now = datetime.datetime.now()
-            now_month = now.strftime("%Y/%m")
-            now_day = now.strftime("%Y_%m_%d")
-            minio_upload_path = f"{now_month}/{now_day}.{file_exe}"
-
-        else:
-            target_date = datetime.datetime.strptime(day, '%Y-%m-%d')
-            target_month = target_date.strftime("%Y/%m")
-            target_day = target_date.strftime("%Y_%m_%d")
-            minio_upload_path = f"models/{target_month}/{target_day}_{post_fix}.{file_exe}"
-        
-        return minio_upload_path
+        now = datetime.datetime.now()
+        folder_path = now.strftime("%Y/%m/%d")
+        return folder_path
     
+    def generate_minio_model_path(self, folder_path, file_name, file_exe):
+        
+        minio_upload_path = f"models/{folder_path}/{file_name}.{file_exe}"
+        system_module_log.info(f"minio_upload_path : {minio_upload_path}")
+        return minio_upload_path
+
     def is_file_exist(self, file_path):
         """
         def description : 파일조회
