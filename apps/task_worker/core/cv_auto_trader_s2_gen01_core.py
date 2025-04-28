@@ -160,16 +160,6 @@ class CvAutoTraderS2Gen01Core():
             - bbbb당시 가격과 현재가의 변화율이 order_hurdle 이하여야함
             """
             
-            self.log.info(f"self.ticker  : {self.ticker }")
-            self.log.info(f"self.bollinger_state_crr  : {self.bollinger_state_crr }")
-            self.log.info(f"self.bollinger_state_prev  : {self.bollinger_state_prev }")
-            self.log.info(f"self.bbbb_price : {self.bbbb_price}")
-            self.log.info(f"self.current_price : {self.current_price}")
-            self.log.info(f"self.order_hurdle : {self.order_hurdle}")
-            self.log.info(f"price_diff_rate : {self.upbit.get_price_diff_rate(self.current_price, self.bbbb_price)}")
-            self.log.info(f"is going up {self.close_price_list[-2] > self.close_price_list[-3]}")
-            self.log.info(f"is down enough {self.upbit.get_price_diff_rate(self.bbbb_price, self.current_price) > self.order_hurdle}")
-
             self.order_seed = self.upbit.get_krw_balance()
 
             # 시드 제한
@@ -190,6 +180,10 @@ class CvAutoTraderS2Gen01Core():
             
             # CASE 1-3 : 정상 케이스, 매수
             else:
+                self.log.info(f"self.upbit.get_krw_balance() : {self.upbit.get_krw_balance()}")
+                self.log.info(f"self.order_percent_iv : {self.order_percent_iv}")
+                self.log.info(f"self.order_seed : {self.order_seed}")
+                self.log.info(f"self.order_amount : {self.order_amount}")
                 self.post_bbbb()
 
         # CASE 2: 매수 없이 상승세 감지      

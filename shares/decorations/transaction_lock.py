@@ -24,7 +24,7 @@ def lock_transaction(lock_key, ttl=10, hold=0):
             # 논리적 충돌 방지를 위한 트릭킹 
             time.sleep(0.25)
             if redis_client.exists(lock_key):
-                raise Exception(f"blocked by overlab transaction, block type 1")
+                raise Exception(f"blocked by overlab transaction, block type")
             
             try:
                 
@@ -36,7 +36,7 @@ def lock_transaction(lock_key, ttl=10, hold=0):
                     return func(*args, **kwargs)
                 
                 else:
-                    raise Exception(f"blocked by overlab transaction, block type 2")
+                    raise Exception(f"blocked by overlab transaction, block type")
                 
             except Exception as e:
                 system_module_log.info(f"method : {str(func.__name__)}, error : {str(e)}")
@@ -70,7 +70,6 @@ def wait_when_lock(lock_key):
                         return func(*args, **kwargs)
                     
                     else:
-                        system_module_log.info(f"waiting until unlcok {cnt}")
                         cnt += 1
                         time.sleep(1)
                      
