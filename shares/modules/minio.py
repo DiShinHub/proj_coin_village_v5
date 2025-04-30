@@ -165,7 +165,7 @@ class MinioModule():
 
                 # 파일 가져오기
                 if name_search == None:
-                    file = self.download_file(file_minio_path.object_name, f"tmp_{file_minio_path.object_name}")
+                    file = self.download_file(file_minio_path.object_name, f"{file_minio_path.object_name}")
                     file_list.append(file)
 
                 else:

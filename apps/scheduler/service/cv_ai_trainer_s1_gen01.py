@@ -62,10 +62,11 @@ class CvAiTrainerS1Gen01(OptionHandler):
             # loop - generate models
             for ticker in self.ticker_list:
                 df = self.get_dataframe(ticker)
-                self.generate_model(ticker, df)
+                model_path_list = self.generate_model(ticker, df)
             
             # TODO regist back tester or execute
             self.log.info(f"model_folder_path : {model_folder_path}")
+            self.log.info(f"model_path_list : {model_path_list}")
     
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
@@ -110,7 +111,8 @@ class CvAiTrainerS1Gen01(OptionHandler):
         )
         
         # gen
-        self.cv_ai_trainer_s1_gen01_core.generate_model(
+        model_path_list = self.cv_ai_trainer_s1_gen01_core.generate_model(
             df=df,
             ticker=ticker
         )
+        return model_path_list
