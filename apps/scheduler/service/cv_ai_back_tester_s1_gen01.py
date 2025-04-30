@@ -24,12 +24,12 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     Service group : AiTrainer
     Service no : 1
     Generation : 01 
-    Product Name : Bishop bee
+    Product Name : Scholar bee
     
     Role : 
     1. KRW-BTC 예측 모델 생성
     """
-    slack_post_prefix = ":bee: Bishop Bee."
+    slack_post_prefix = ":bee: Scholar Bee."
     
     def __init__(self, seq):
         self.log = Log(os.path.basename(__file__)).get_logger()

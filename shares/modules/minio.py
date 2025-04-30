@@ -48,7 +48,6 @@ class MinioModule():
     def generate_minio_model_path(self, folder_path, file_name, file_exe):
         
         minio_upload_path = f"models/{folder_path}/{file_name}.{file_exe}"
-        system_module_log.info(f"minio_upload_path : {minio_upload_path}")
         return minio_upload_path
 
     def is_file_exist(self, file_path):

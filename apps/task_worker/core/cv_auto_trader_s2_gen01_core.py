@@ -1,16 +1,20 @@
 from shares.modules.redis import r as redis_single
 from shares.modules.upbit import Upbit
+from shares.dao.trade_result_dao import TradeResultDao
 from shares.decorations.transaction_lock import *
 from shares.constance.upbit_constance import UpbitConst
+from shares.functions.common_function import generate_micro_date
 
 import inspect
 
 class CvAutoTraderS2Gen01Core():
     slack_post_prefix = ":owl: Night Owl. "
     
-    def __init__(self, ticker, order_intensity, order_book, order_max, log):
+    def __init__(self, ticker, order_intensity, order_book, order_max, log, runnable_services_seq):
         
         self.log = log
+        self.trade_result_dao = TradeResultDao()
+        self.runnable_services_seq = runnable_services_seq
         self.redis = redis_single
         self.upbit = Upbit()
         self.upbit.set_ticker(ticker)
@@ -195,7 +199,27 @@ class CvAutoTraderS2Gen01Core():
     def post_bbbb(self):
         
         # 매매 진행
-        msg = self.upbit.buy_coin(self.order_amount)
+        order_dt = str(generate_micro_date())
+        res = self.upbit.buy_coin(self.order_amount)
+        buy_result = res["buy_result"]
+        
+        # 매매 결과 저장
+        self.trade_result_dao.insert_trade_result(
+            trade_exchange="upbit",
+            trade_ticker=self.ticker,
+            uuid=buy_result.get("uuid"),
+            ord_type=buy_result.get("ord_type"),
+            price=buy_result.get("price"),
+            reserved_fee=buy_result.get("reserved_fee"),
+            remaining_fee=buy_result.get("remaining_fee"),
+            paid_fee=buy_result.get("paid_fee"),
+            state=buy_result.get("state"),
+            locked=buy_result.get("locked"),
+            executed_volume=buy_result.get("executed_volume"),
+            order_dt=order_dt,
+            trade_dt=buy_result.get("created_at"),
+            runnable_services_seq=self.runnable_services_seq
+        )
 
         # 매매 기록 및 강도 올림
         if self.redis.hget_data(self.pref_bbbb_price, self.ticker):
@@ -204,7 +228,7 @@ class CvAutoTraderS2Gen01Core():
             self.redis.hupd_date(self.pref_order_hurdle, self.ticker, (self.order_hurdle * self.order_hurdle_ir))  
             self.redis.hupd_date(self.pref_order_count, self.ticker, (self.order_count + 1))     
             
-        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} : {self.ticker}의 매수를 성공하였습니다. \n {msg} \n\n")
+        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} : {self.ticker}의 매수를 성공하였습니다. \n {res['msg']} \n\n")
     
     """
     BBBB reset

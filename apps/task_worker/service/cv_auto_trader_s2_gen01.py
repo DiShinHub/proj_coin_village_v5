@@ -34,6 +34,8 @@ class CvAutoTraderS2Gen01(OrderbookHandler, OptionHandler):
         self.order_max = None
         self.init_options(seq)
         
+        self.runnable_services_seq = seq
+        
         # set OrderbookHandler's key
         super().__init__(orderbook_key=UpbitConst.ORDERBOOK_QUEUE_KEY)
 
@@ -55,7 +57,7 @@ class CvAutoTraderS2Gen01(OrderbookHandler, OptionHandler):
         order_book = self.redis.get_json_data(key)                                         # 호가 정보
         
         # --- 실행
-        cv_auto_trader_s2_gen01_main = CvAutoTraderS2Gen01Core(ticker, order_intensity, order_book, self.order_max, self.log)
+        cv_auto_trader_s2_gen01_main = CvAutoTraderS2Gen01Core(ticker, order_intensity, order_book, self.order_max, self.log, self.runnable_services_seq)
         p = multiprocessing.Process(target=cv_auto_trader_s2_gen01_main.run)
         p.start()
         

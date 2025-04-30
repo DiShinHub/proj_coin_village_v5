@@ -787,7 +787,10 @@ class Upbit():
             else: 
                 msg = buy_result
 
-            return str(msg)
+            return {
+                "msg", str(msg),
+                "buy_result", buy_result
+            }
 
         # 실패
         else:
