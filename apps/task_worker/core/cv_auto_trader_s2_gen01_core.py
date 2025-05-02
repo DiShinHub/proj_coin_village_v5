@@ -79,12 +79,10 @@ class CvAutoTraderS2Gen01Core():
         
         if self.order_percent_iv: self.order_percent_iv = float(self.order_percent_iv)
         else:  
-            self.log.info(f"Missing options required: self.order_percent_iv")  
             raise ValueError(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : Missing options required: self.order_percent_iv")
 
         if self.order_percent_ir: self.order_percent_ir = float(self.order_percent_ir) 
         else: 
-            self.log.info(f"Missing options required: self.order_percent_ir")  
             raise ValueError(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : Missing options required: self.order_percent_ir")
 
         if self.order_hurdle_iv: self.order_hurdle_iv = float(self.order_hurdle_iv)
@@ -154,12 +152,6 @@ class CvAutoTraderS2Gen01Core():
         elif self.bollinger_state_crr in ([6]) and\
             self.bollinger_state_prev in ([5, 6]) and\
             self.sideways_hours_limit > (datetime.datetime.now()- self.order_last):
-            
-            self.log.info(f"self.bollinger_state_crr : {self.bollinger_state_crr}")
-            self.log.info(f"self.bollinger_state_prev : {self.bollinger_state_prev}")
-            self.log.info(f"self.order_last : {self.order_last}")
-            self.log.info(f"self.sideways_hours_limit : {self.sideways_hours_limit}")
-            self.log.info(f"is over elapsed : {self.sideways_hours_limit > (datetime.datetime.now()- self.order_last)}")
             
             self.reset_order(f"{self.slack_post_prefix} : {self.ticker}의 상승세를 감지하였으며 {self.sideways_hours_limit}시간 동안 거래를 감지하지 못하였습니다. 매매롤 초기화 합니다.")
     
