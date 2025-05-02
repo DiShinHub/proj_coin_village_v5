@@ -107,7 +107,7 @@ class CvAutoTraderS2Gen01Core():
         self.bollinger_state_prev = self.redis.hget_data(self.pref_bollinger_state, self.ticker)    # 이전 볼린저 상태
         self.order_amount = self.redis.hget_data(self.pref_order_amount, self.ticker)               # 주문량
         self.order_hurdle = self.redis.hget_data(self.pref_order_hurdle, self.ticker)               # 주문 허들
-        self.order_last_dt = self.redis.hget_data(self.pref_order_last_dt, self.ticker)             # 주문 허들
+        self.order_last_dt = self.redis.hget_data(self.pref_order_last_dt, self.ticker)             # 마지막 주문 시간
         
         if self.bbbb_price: self.bbbb_price = float(self.bbbb_price)
         else: self.bbbb_price = 0
