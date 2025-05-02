@@ -122,7 +122,7 @@ class CvAutoTraderS2Gen01Core():
         else:  self.order_hurdle = self.order_hurdle_iv
         
         if self.order_last_dt: self.order_last = datetime.datetime.strptime(self.order_last, "%Y-%m-%d %H:%M:%S")
-        else:  self.order_last_dt = datetime.datetime.now()
+        else: self.order_last_dt = datetime.datetime.now()
 
     @block_when_lock(lock_key=UpbitConst.TRANSACTION_BLOCK_KEY)
     def set_current_data(self):
