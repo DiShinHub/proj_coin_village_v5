@@ -64,6 +64,7 @@ CREATE TABLE public.trade_result (
 	trade_exchange varchar(100) NOT NULL,
 	trade_ticker varchar(100) NOT NULL,
 	uuid varchar(100) NOT NULL,
+	ord_side varchar(100) NOT NULL,
 	ord_type varchar(100) NOT NULL,
 	price varchar(100) NOT NULL,
 	reserved_fee varchar(100) NOT NULL,
@@ -73,7 +74,7 @@ CREATE TABLE public.trade_result (
 	locked varchar(100) NOT NULL,
 	executed_volume varchar(100) NOT NULL,
 	order_dt timestamptz NULL,
-	trade_dt timestamptz NULL,
+	trade_dt varchar(100) NULL,
 	runnable_services_seq int NOT NULL,
 	CONSTRAINT trade_result_pkey PRIMARY KEY (seq)
 );

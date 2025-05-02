@@ -115,9 +115,11 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         now = datetime.datetime.now()
         datetime_list = [now - datetime.timedelta(minutes=5 * i) for i in range(self.time_steps)]
         
+        collected_data_f_list = []
         for datetime_list_ in datetime_list:
             cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core()
             collected_data_f, collected_data_t = cv_auto_trader_s2_gen01_core.collect_data(ticker, datetime_list_)
+            collected_data_f_list.append(collected_data_f)
         
         df = pd.DataFrame(collected_data_f, columns=col_f)
         

@@ -4,6 +4,8 @@ from shares.modules.redis import *
 from shares.modules.slack import *
 from shares.modules.upbit import *
 from shares.modules.binance import *
+
+from shares.dao.trade_result_dao import TradeResultDao
 from shares.functions.common_function import *
 
 import os
@@ -22,11 +24,12 @@ class Test():
         self.upbit = Upbit()
         self.binance = Binance()
         
+        self.trade_result_dao = TradeResultDao()
+        
         self.pref_slack_msg_box = "slack_msg_box"
     
         
     def decide_up_down_side(self, future_prices, is_by_prev=False):
-        
         res = {}
         
         # 첫 타겟은 정시간
@@ -71,6 +74,72 @@ class Test():
                             
     def run(self):
         
+        # order_dt = str(generate_now_date())
+        # self.ticker = "KRW-TEST"
+        # self.pref_order_last = "testsestse"
+        
+        # self.redis.hupd_date(self.pref_order_last, self.ticker, order_dt) 
+        
+        # time.sleep(1)
+        
+        # self.order_last = self.redis.hget_data(self.pref_order_last, self.ticker)   
+        
+        # self.log.info(f"self.order_last : {self.order_last}")
+        # self.log.info(f"self.order_last : {type(self.order_last)}")
+        
+        # self.order_last = datetime.datetime.strptime(self.order_last, "%Y-%m-%d %H:%M:%S")
+        
+        # self.log.info(f"self.order_last : {self.order_last}")
+        # self.log.info(f"self.order_last : {type(self.order_last)}")
+        
+                
+        # now = datetime.datetime.now()
+        # elapsed = now - self.order_last
+        # n = 3
+        # if elapsed >= timedelta(hours=n):
+        
+        
+        return 
+        
+        self.runnable_services_seq = 1 
+        
+        # 매매 진행
+        order_dt = str(generate_now_date())
+        self.upbit.set_ticker("KRW-BTC")
+        
+        msg = None
+        try:
+            buy_result = self.upbit.buy_coin(10000)
+                    
+            self.trade_result_dao.insert_trade_result(
+                trade_exchange="upbit",
+                trade_ticker="KRW-BTC",
+                uuid=buy_result.get("uuid"),
+                ord_side=buy_result.get("side"),
+                ord_type=buy_result.get("ord_type"),
+                price=buy_result.get("price"),
+                reserved_fee=buy_result.get("reserved_fee"),
+                remaining_fee=buy_result.get("remaining_fee"),
+                paid_fee=buy_result.get("paid_fee"),
+                state=buy_result.get("state"),
+                locked=buy_result.get("locked"),
+                executed_volume=buy_result.get("executed_volume"),
+                order_dt=order_dt,
+                trade_dt=str(buy_result.get("created_at")),
+                runnable_services_seq=self.runnable_services_seq
+            )
+            
+            msg = f"매수에 성공하였습니다, \n 티커 : {self.ticker} ,\n 주문가 : {round(float(buy_result['price']), 2)}, 수수료 : {round(float(buy_result['reserved_fee']))}"
+            
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+          
+        
+        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} : {self.ticker}의 매수를 성공하였습니다. \n {msg} \n\n")
+        return 
+        
+        
+        return 
         
         # current_price = 2554000.0
         # bbbb_price = 2628000.0

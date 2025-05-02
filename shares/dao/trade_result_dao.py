@@ -12,6 +12,7 @@ class TradeResultDao():
             trade_exchange,
             trade_ticker,
             uuid,
+            ord_side,
             ord_type,
             price,
             reserved_fee,
@@ -26,7 +27,7 @@ class TradeResultDao():
         ):
         query = f"""
         INSERT INTO public.trade_result
-        (trade_exchange, trade_ticker, "uuid", ord_type, price, reserved_fee, remaining_fee, paid_fee, state, "locked", executed_volume, order_dt, trade_dt, runnable_services_seq)
-        VALUES(nextval('{trade_exchange}', '{trade_ticker}', '{uuid}', '{ord_type}', '{price}', {reserved_fee}, '{remaining_fee}', '{paid_fee}', '{state}', '{locked}', '{executed_volume}', '{order_dt}', '{trade_dt}', {runnable_services_seq});
+        (trade_exchange, trade_ticker, "uuid", ord_side, ord_type, price, reserved_fee, remaining_fee, paid_fee, state, "locked", executed_volume, order_dt, trade_dt, runnable_services_seq)
+        VALUES('{trade_exchange}', '{trade_ticker}', '{uuid}', '{ord_side}','{ord_type}', '{price}', {reserved_fee}, '{remaining_fee}', '{paid_fee}', '{state}', '{locked}', '{executed_volume}', '{order_dt}', '{trade_dt}', {runnable_services_seq});
         """
         return self.postgres.execute_query_with_commit(query) 

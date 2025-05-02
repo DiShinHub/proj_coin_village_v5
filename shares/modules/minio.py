@@ -12,10 +12,21 @@ class MinioModule():
     def __init__(self):
         self.log = system_module_log
         self.external_client, self.minio_bucket = Config().set_minio() 
-
         self.local_path = "minio"
+    
+    def init_workspace(self):
+        """
+        def description : 로컬폴더와 버켓 생성
+        
+        """
+        
+        # 로컬 폴더 여부 확인 후 없으면 생성
         if not os.path.exists(self.local_path):
             os.makedirs(self.local_path)
+        
+        # 버킷 존재 여부 확인 후 없으면 생성
+        if not self.external_client.bucket_exists(self.minio_bucket):
+            self.external_client.make_bucket(self.minio_bucket)
 
     def generate_local_path(self, file_exe):
         """

@@ -781,21 +781,13 @@ class Upbit():
         
         # 성공
         if "uuid" in buy_result:
-            if "price" in buy_result and "reserved_fee" in buy_result : 
-                msg = f"매수에 성공하였습니다, \n 주문가 : {round(float(buy_result['price']), 2)}, 수수료 : {round(float(buy_result['reserved_fee']))}"
-            
-            else: 
-                msg = buy_result
-
-            return {
-                "msg", str(msg),
-                "buy_result", buy_result
-            }
+            if "price" in buy_result:
+                if "reserved_fee" in buy_result: 
+                    return buy_result
 
         # 실패
-        else:
-            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(buy_result)}")
-            raise
+        self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(buy_result)}")
+        raise
 
     def sell_coin(self, krw_order="All", current_price=None):
         """
