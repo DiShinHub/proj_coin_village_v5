@@ -96,3 +96,37 @@ CREATE TRIGGER trade_result_trigger
 AFTER INSERT OR UPDATE ON trade_result
 FOR EACH ROW
 EXECUTE FUNCTION remove_old_trade_result();
+
+-- public.ai_back_test_result 
+DROP TABLE IF EXISTS public.ai_back_test_result;
+
+CREATE TABLE public.ai_back_test_result (
+	seq serial4 NOT NULL,
+	ticker varchar(100) NOT NULL,
+	model_path varchar(100) NOT NULL,
+	interval varchar(100) NOT NULL,
+	prediction varchar(100) NOT NULL,
+	real varchar(100) NOT NULL,
+	hit_yn varchar(1) NOT NULL,
+	back_test_start_dt timestamptz NULL,
+	back_test_end_dt timestamptz NULL,
+	runnable_services_seq int NOT NULL,
+	CONSTRAINT ai_back_test_result_pkey PRIMARY KEY (seq)
+);
+CREATE INDEX ix_ai_back_test_result_ticker ON public.ai_back_test_result (ticker);;
+CREATE INDEX ix_ai_back_test_result_hit_yn ON public.ai_back_test_result (hit_yn);
+
+CREATE FUNCTION remove_old_ai_back_test_result()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM ai_back_test_result WHERE back_test_start_dt < NOW() - INTERVAL '12 month';
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER ai_back_test_result_trigger
+AFTER INSERT OR UPDATE ON ai_back_test_result
+FOR EACH ROW
+EXECUTE FUNCTION remove_old_ai_back_test_result();

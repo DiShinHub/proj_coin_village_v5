@@ -95,8 +95,8 @@ class CvDataCollectorS1Gen01(OptionHandler):
         collectable_datetime_list_t = self.parse_collectable_datetime_list(already_collected_list_t)
         
         # --- 페어하지 않게 수집 된 데이터 날짜 리스트 
-        only_in_f = list(set(collectable_datetime_list_f) - set(collectable_datetime_list_t))  # f에는 있지만 t에는 없음
-        only_in_t = list(set(collectable_datetime_list_t) - set(collectable_datetime_list_f))  # t에는 있지만 f에는 없음
+        only_in_f = list(set(collectable_datetime_list_f) - set(collectable_datetime_list_t))  # feature 테이블에는 있지만 t에는 없음
+        only_in_t = list(set(collectable_datetime_list_t) - set(collectable_datetime_list_f))  # target 테이블에는 있지만 f에는 없음
         
         # --- 페어하지 않게 수집 된 데이터 삭제
         if len(only_in_f) > 0:

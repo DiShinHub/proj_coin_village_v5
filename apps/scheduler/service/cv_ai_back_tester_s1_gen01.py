@@ -32,7 +32,6 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     
     def __init__(self, seq):
         
-        # 
         self.log = Log(os.path.basename(__file__)).get_logger()
         self.minio = MinioModule()
         self.upbit = Upbit()
@@ -58,8 +57,29 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         self.time_steps = 40
         self.init_options(seq)
         
+    def regist(self):
+        
+        # TEST Block
+        # scheduler = BlockingScheduler()
+        # scheduler.add_job(self.run, 'cron', hour=self.scheduler_start_hour, minute=self.scheduler_start_min)
+        # scheduler.start()
+        # self.log.info(f"스케쥴러는 매일 {self.ticker_list}를 대상으로 {self.dataset_generate_term}일의 데이터를 수집하며, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행됩니다.")
+        
+        # TEST
+        self.run()
+        
     def run(self):
         
+        try:
+            ticker="KRW-BTC"
+            model_path="models/2025/05/07/KRW-BTC_by_ontime_change_after_15min_20250507_161809346519.h5"
+            interval = 15 * 60
+            self.back_test_model(ticker, model_path, interval)
+    
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+        
+        return 
         
         # 현재가 대비
         model=None
@@ -98,10 +118,10 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     def back_test_model(self, ticker, model_path, interval):
         
         # 입출력 칼럼
-        col_f = ['timestamp', 'weekday',
-        'open', 'high', 'low', 'close', 'volume', 'volume_ma5', 'volume_ma20',
-        'volume_ratio', 'obv', 'vwap', 'volume_volatility', 'volume_spike',
-        'rsi', 'macd', 'macd_signal', 'bollinger_partition'
+        col_f = ['tick_datetime', 'weekday',
+        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
+        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
+        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
         ]
         
         # 모델 다운
@@ -109,38 +129,45 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         self.minio.download_file(model_path, local_path)
         
         # 모델 로드 
-        model = load_model(local_path)      
+        model = load_model(local_path)    
         
         # 예측 데이터 준비
         now = datetime.datetime.now()
         datetime_list = [now - datetime.timedelta(minutes=5 * i) for i in range(self.time_steps)]
+        datetime_str_list = [dt.strftime("%Y-%m-%d %H:%M:%S") for dt in datetime_list]
         
         collected_data_f_list = []
-        for datetime_list_ in datetime_list:
-            cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core()
-            collected_data_f, collected_data_t = cv_auto_trader_s2_gen01_core.collect_data(ticker, datetime_list_)
+        for datetime_list_ in datetime_str_list:
+            cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core(self.log)
+            
+            collected_data_f, collected_data_t = cv_auto_trader_s2_gen01_core.collect_data(ticker, str(datetime_list_))
             collected_data_f_list.append(collected_data_f)
         
-        df = pd.DataFrame(collected_data_f, columns=col_f)
+        df = pd.DataFrame(collected_data_f_list, columns=col_f)
         
         # 전처리
         data = df.copy()
         data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
         data.replace({'sideways': 1, 'up': 2, 'down': 0}, inplace=True)
         data.fillna(data.mean(), inplace=True)
+        data.pop('tick_datetime')
         
-        data = self.sklearn_module.standardize_data(data, col_f)
-        X = self.tensorflow_module.create_sequences(data[col_f].values, self.time_steps)
+        # 입력 칼럼
+        col_f = ['timestamp', 'weekday',
+        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
+        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
+        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
+        ]
+        data[col_f] = self.sklearn_module.standardize_fit_data(data, col_f) 
         
         # 예측 전 현재가 조회
         self.upbit.set_ticker(ticker)
-        current_price = self.upbit.get_current_price()
+        current_price_before = self.upbit.get_current_price()
         
         # 예측
-        predicttion = self.tensorflow_module.predict_by_lstm_model(model, X)
-        
-        # softmax 확률을 라벨로 변환
-        predicted_label = np.argmax(predicttion, axis=1)
+        prediction_softmax = self.tensorflow_module.predict_by_lstm_model(model, data[col_f], self.time_steps)
+        predicted_label = np.argmax(prediction_softmax, axis=1)
+        prediction = int(predicted_label[0])
         
         # 모델 파기
         del model
@@ -150,9 +177,31 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         
         # 예측 후 현재가 조회
         self.upbit.set_ticker(ticker)
-        current_price = self.upbit.get_current_price()
+        current_price_after = self.upbit.get_current_price()
         
-        # 상승/하락여부 예측과 실제 결과 비교 
+        # --- 상승/하락여부 예측과 실제 결과 비교 
+        if interval < 60 * 60: 
+            percentage_standard = 0.5
+        elif interval < 60 * 60 * 4: 
+            percentage_standard = 1
+        elif interval < 60 * 60 * 24: 
+            percentage_standard = 2
+
+        percentage_change = ((current_price_after - current_price_before) / current_price_before) * 100
+        
+        real = None
+        if percentage_change > percentage_standard:
+            real = 2
+        elif percentage_change < -percentage_standard:
+            real  = 0
+        else:
+            real  = 1
+            
+        if real == prediction:
+            self.log.info(f"예측 성공")
+        
+        else:
+            self.log.info(f'예측 실패')
         
         # 모델 파일 삭제
         if os.path.exists(local_path):

@@ -35,8 +35,7 @@ class CvAiTrainerS1Gen01Core():
         self.time_steps = time_steps  # 시퀀스 길이 설정
         self.batch_size = batch_size
         self.epochs = epochs
-        if early_stop:
-            self.early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True) # 조기 종료 콜백 설정
+        self.early_stop = early_stop
         
     def generate_model(self, ticker, df):
         
@@ -44,9 +43,9 @@ class CvAiTrainerS1Gen01Core():
             
         # 입출력 칼럼
         col_f = ['timestamp', 'weekday',
-        'open', 'high', 'low', 'close', 'volume', 'volume_ma5', 'volume_ma20',
-        'volume_ratio', 'obv', 'vwap', 'volume_volatility', 'volume_spike',
-        'rsi', 'macd', 'macd_signal', 'bollinger_partition'
+        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
+        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
+        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
         ]
         
         col_t = ['by_ontime_change_after_15min',
@@ -59,6 +58,8 @@ class CvAiTrainerS1Gen01Core():
         'by_prev_change_after_1day'
         ]
 
+        local_path_list = []
+        model_path_list = []
         try:
             # 전처리
             data = df.copy()
@@ -69,9 +70,7 @@ class CvAiTrainerS1Gen01Core():
             # 표준화
             data = self.sklearn_module.standardize_fit_data(data, col_f)
 
-            # 모델 학습 후 업로드
-            local_path_list = []
-            model_path_list = []
+            # 다단 모델 생성 후 업로드
             for idx, target in enumerate(col_t):
                 self.log.info(f"{idx + 1}/{len(col_t)} - {target} 모델 학습 시작...")
                 
@@ -87,7 +86,7 @@ class CvAiTrainerS1Gen01Core():
                 X, Y = data[col_f].values, data[target].values
                 
                 # 모델 헉습
-                model = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps)
+                model = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps, self.batch_size, self.epochs, self.early_stop)
                 
                 # 모델 저장
                 model.save(local_path, save_format="h5")
@@ -101,6 +100,7 @@ class CvAiTrainerS1Gen01Core():
             
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            self.redis.save_msg_on_Q(f"학습 중 애러: {str(datetime.datetime.now())}")
         
         finally:
             self.redis.save_msg_on_Q(f"전체 학습 종료: {str(datetime.datetime.now())}")

@@ -41,6 +41,7 @@ class CvDataCollectorS1Gen01Core():
             
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            raise
             
     def set_features(self, tick_datetime):
         
