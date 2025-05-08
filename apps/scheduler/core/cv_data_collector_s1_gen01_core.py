@@ -23,12 +23,15 @@ class CvDataCollectorS1Gen01Core():
         self.target= {}    
                   
         return
+    
+    def init_upbit_ticker(self, ticker):
+        self.reset_attr()
+        self.upbit.set_ticker(ticker)
         
     def collect_data(self, ticker, tick_datetime):
         
         try:
-            self.reset_attr()
-            self.upbit.set_ticker(ticker)
+            self.init_upbit_ticker()
             
             # -- 피쳐 조회
             self.set_features(tick_datetime)
@@ -53,6 +56,8 @@ class CvDataCollectorS1Gen01Core():
         multiple_info = self.upbit.get_multiple_info("minute5", tick_datetime)
         for key, value in multiple_info.items():
             self.feature[key] = value
+        
+        return self.feature
             
     def set_targets(self, tick_datetime):
         
@@ -76,6 +81,7 @@ class CvDataCollectorS1Gen01Core():
             "by_prev" : target_by_prev,
             "by_ontime" : target_by_ontime,
         }
+        return self.target
         
     def decide_up_down_side(self, future_prices, is_by_prev=False):
         

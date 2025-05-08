@@ -71,8 +71,29 @@ class Test():
                             target_price = future_price 
         
         return res
-                            
+
+    def wait_until_next_15min(self):
+        
+        now = datetime.datetime.now()
+        next_minute = (now.minute // 15 + 1) * 15
+        if next_minute == 60:
+            next_time = now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=1)
+        else:
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+        wait_seconds = (next_time - now).total_seconds()
+        
+        self.log.info(f"Waiting {int(wait_seconds)} seconds until {next_time.time()} to start.")
+        
+        time.sleep(wait_seconds)           
+                 
     def run(self):
+        
+        self.log.info(f'val1 : {str(datetime.datetime.now())}')
+        self.wait_until_next_15min()
+        self.log.info(f'val2 : {str(datetime.datetime.now())}')
+        
+        
+        return 
         
         # order_dt = str(generate_now_date())
         # self.ticker = "KRW-TEST"

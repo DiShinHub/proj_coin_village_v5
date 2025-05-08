@@ -5,8 +5,6 @@ from shares.modules.tensorflow_module import TensorflowModule
 from shares.modules.sklearn_module import SklearnModule
 from shares.functions.common_function import generate_micro_date
 
-from tensorflow.keras.callbacks import EarlyStopping
-
 import pandas as pd
 import datetime
 import os

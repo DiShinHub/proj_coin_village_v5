@@ -4,12 +4,14 @@ from shares.modules.minio import MinioModule
 from shares.modules.upbit import Upbit
 from shares.modules.tensorflow_module import TensorflowModule
 from shares.modules.sklearn_module import SklearnModule
+from shares.functions.common_function import map_interval_to_interval_min
+from shares.dao.ai_back_test_result_dao import AiBackTestResultDao
+
+from scheduler.core.cv_ai_back_tester_s1_gen01_core import CvAiBackTesterS1Gen01Core
 from scheduler.core.cv_data_collector_s1_gen01_core import CvDataCollectorS1Gen01Core
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from tensorflow.keras.models import load_model
+from apscheduler.schedulers.background import BackgroundScheduler
 
-import numpy as np
 import pandas as pd
 import datetime
 import time
@@ -23,12 +25,12 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     Service group : AiTrainer
     Service no : 1
     Generation : 01 
-    Product Name : Scholar bee
+    Product Name : Lab Bee
     
     Role : 
     1. KRW-BTC 예측 모델 생성
     """
-    slack_post_prefix = ":bee: Scholar Bee."
+    slack_post_prefix = ":bee: Lab Bee."
     
     def __init__(self, seq):
         
@@ -37,177 +39,161 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         self.upbit = Upbit()
         self.tensorflow_module = TensorflowModule()
         self.sklearn_module = SklearnModule()
+        self.ai_back_test_result_dao = AiBackTestResultDao()
+        
+        self.seq = seq
          
         # service attrs : TODO auto gen by db 
-        self.model_folder_path = "models/2025/04/28"
         self.model_path_list = [
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_15min_20250428_175355291689.h5",
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_30min_20250428_181140369661.h5",
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_1hour_20250428_182843866979.h5",
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_4hour_20250428_183620206381.h5",
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_12hour_20250428_184056863529.h5",
-            "models/2025/04/28/KRW-BTC_by_ontime_change_after_1day_20250428_184436767909.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_15min_20250428_184820389211.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_30min_20250428_190159898172.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_1hour_20250428_191244513511.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_4hour_20250428_191722060110.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_12hour_20250428_192402067674.h5",
-            "models/2025/04/28/KRW-BTC_by_prev_change_after_1day_20250428_192749191385.h5"
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_15min_20250507_173104166362.h5', 
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_30min_20250507_174214634777.h5', 
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_1hour_20250507_175810798721.h5', 
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_4hour_20250507_180317398963.h5', 
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_12hour_20250507_180917352605.h5', 
+            'models/2025/05/07/KRW-BTC_by_ontime_change_after_1day_20250507_181317953458.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_15min_20250507_181848993081.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_30min_20250507_182416527925.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_1hour_20250507_183022829968.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_4hour_20250507_183806032448.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_12hour_20250507_184153850112.h5', 
+            'models/2025/05/07/KRW-BTC_by_prev_change_after_1day_20250507_184541721808.h5'
         ]
         self.time_steps = 40
         self.init_options(seq)
         
+    """
+    regist scheduler
+    """     
     def regist(self):
         
-        # TEST Block
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.run, 'cron', hour=self.scheduler_start_hour, minute=self.scheduler_start_min)
-        # scheduler.start()
-        # self.log.info(f"스케쥴러는 매일 {self.ticker_list}를 대상으로 {self.dataset_generate_term}일의 데이터를 수집하며, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행됩니다.")
-        
-        # TEST
-        self.run()
-        
-    def run(self):
-        
         try:
-            ticker="KRW-BTC"
-            model_path="models/2025/05/07/KRW-BTC_by_ontime_change_after_15min_20250507_161809346519.h5"
-            interval = 15 * 60
-            self.back_test_model(ticker, model_path, interval)
-    
+            # --- 정각, 15분, 30분, 45분마다 실행하도록 조정 
+            self.wait_until_next_15min()
+            
+            # # --- 스케쥴러 등록
+            # scheduler = BackgroundScheduler()
+            # scheduler.add_job(self.back_test_model, 'interval', minutes=15, args=["KRW-BTC", self.model_path_list[0], "minutes15", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', minutes=30, args=["KRW-BTC", self.model_path_list[1], "minutes30", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=1, args=["KRW-BTC", self.model_path_list[2], "hour1", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=4, args=["KRW-BTC", self.model_path_list[3], "hour4", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=12, args=["KRW-BTC", self.model_path_list[4], "hour12", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', days=1, args=["KRW-BTC", self.model_path_list[5], "day", None, False], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', minutes=15, args=["KRW-BTC", self.model_path_list[6], "minutes15", None, True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', minutes=30, args=["KRW-BTC", self.model_path_list[7], "minutes30", "minutes15", True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=1, args=["KRW-BTC", self.model_path_list[8], "hour1", "minutes30", True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=4, args=["KRW-BTC", self.model_path_list[9], "hour4", "hour1", True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', hours=12, args=["KRW-BTC", self.model_path_list[10], "hour12", "hour4", True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            # scheduler.add_job(self.back_test_model, 'interval', days=1, args=["KRW-BTC", self.model_path_list[11], "day", "hour12", True], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1)) 
+            # scheduler.start()
+            
+            # --- 스케쥴러 등록
+            for model_path in self.model_path_list:
+                self.regist_scheduler(
+                    ticker="KRW-BTC", 
+                    model_path=model_path, 
+                    interval=self.get_interval_by_model_path(model_path), 
+                    interval_prev=self.get_interval_prev_by_model_path(model_path),
+                    is_by_prev=self.get_is_by_prev_by_model_path(model_path)
+                )
+
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+
+    def wait_until_next_15min(self):
         
-        return 
+        now = datetime.datetime.now()
+        next_minute = (now.minute // 15 + 1) * 15
+        if next_minute == 60:
+            next_time = now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=1)
+            
+        else:
+            next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+            
+        wait_seconds = (next_time - now).total_seconds()
+        time.sleep(wait_seconds)       
         
-        # 현재가 대비
-        model=None
-        interval = 15 * 60
-        scheduler = BlockingScheduler()
-        scheduler.add_job(self.back_test_model, 'interval', minutes=15, args=[model, interval])
+    def regist_scheduler(self, ticker, model_path, interval, interval_prev, is_by_prev):
         
-        # model=None
-        # interval = 30 * 60
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.back_test_model, 'interval', minutes=30, args=[model, interval])
+        scheduler = BackgroundScheduler()
         
-        # model=None
-        # interval = 1 * 60 * 60
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.back_test_model, 'interval', hours=1, args=[model, interval])
-        
-        # model=None
-        # interval = 4 * 60 * 60
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.back_test_model, 'interval', hours=4, args=[model, interval])
-        
-        # model=None
-        # interval = 12 * 60 * 60
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.back_test_model, 'interval', hours=12, args=[model, interval])
-        
-        # model=None
-        # interval = 24 * 60 * 60
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.back_test_model, 'interval', days=1, args=[model, interval])
-        
-        # 이전가 대비
-  
+        if "min_" in model_path:
+            scheduler.add_job(self.back_test_model, 'interval', minutes=map_interval_to_interval_min(interval), args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            self.log.info(f'job added1')
+        elif "hour_" in model_path:
+            scheduler.add_job(self.back_test_model, 'interval', hours=map_interval_to_interval_min(interval)/60, args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            self.log.info(f'job added2')
+        elif "day_" in model_path:
+            scheduler.add_job(self.back_test_model, 'interval', days=map_interval_to_interval_min(interval)/60/24, args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
+            self.log.info(f'job added3')
+        scheduler.start()
     
-    def back_test_model(self, ticker, model_path, interval):
+    def get_is_by_prev_by_model_path(self, model_path):
         
-        # 입출력 칼럼
+        # is_by_prev를 모델 경로를 통해 설정
+        if "by_ontime" in model_path: is_by_prev = False
+        else: is_by_prev = True
+        
+        return is_by_prev
+        
+    def get_interval_by_model_path(self, model_path):
+        
+        # interval를 모델 경로를 통해 설정
+        interval = None
+        if "15min_" in model_path: interval = "minute15"
+        elif "30min_" in model_path: interval = "minute30"
+        elif "1hour_" in model_path: interval = "hour1"
+        elif "4hour_" in model_path: interval = "hour4"
+        elif "12hour_" in model_path: interval = "hour12"
+        elif "1day_" in model_path: interval = "day"
+        
+        return interval
+        
+    def get_interval_prev_by_model_path(self, model_path):
+        
+        # interval_prev를 모델 경로를 통해 설정
+        interval_prev = None
+        if "by_prev" in model_path:
+            if "15min_" in model_path: interval_prev = None
+            elif "30min_" in model_path: interval_prev = "minute15"
+            elif "1hour_" in model_path: interval_prev = "minute30"
+            elif "4hour_" in model_path: interval_prev = "hour1"
+            elif "12hour_" in model_path: interval_prev = "hour4"
+            elif "1day_" in model_path: interval_prev = "hour12"
+        
+        return interval_prev
+    
+    """
+    biz
+    """
+    def back_test_model(self, ticker, model_path, interval, interval_prev=None, is_by_prev=False):
+        
+        # --- 예측 데이터 조회
+        df = self.get_target_prediction_data(ticker)
+        
+        # --- 백테스팅 요청
+        cv_ai_back_tester_s1_gen01_core = CvAiBackTesterS1Gen01Core(self.log, self.seq)
+        cv_ai_back_tester_s1_gen01_core.back_test_model(df, ticker, model_path, interval, interval_prev, is_by_prev)
+    
+    def get_target_prediction_data(self, ticker):
+        
         col_f = ['tick_datetime', 'weekday',
         'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
         'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
         'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
         ]
         
-        # 모델 다운
-        local_path = self.minio.generate_local_path(file_exe="h5")
-        self.minio.download_file(model_path, local_path)
-        
-        # 모델 로드 
-        model = load_model(local_path)    
-        
-        # 예측 데이터 준비
         now = datetime.datetime.now()
         datetime_list = [now - datetime.timedelta(minutes=5 * i) for i in range(self.time_steps)]
         datetime_str_list = [dt.strftime("%Y-%m-%d %H:%M:%S") for dt in datetime_list]
         
         collected_data_f_list = []
-        for datetime_list_ in datetime_str_list:
+        for datetime_str in datetime_str_list:
             cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core(self.log)
+            cv_auto_trader_s2_gen01_core.init_upbit_ticker(ticker)
+            collected_data_f = cv_auto_trader_s2_gen01_core.set_features(datetime_str)
             
-            collected_data_f, collected_data_t = cv_auto_trader_s2_gen01_core.collect_data(ticker, str(datetime_list_))
             collected_data_f_list.append(collected_data_f)
         
         df = pd.DataFrame(collected_data_f_list, columns=col_f)
         
-        # 전처리
-        data = df.copy()
-        data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
-        data.replace({'sideways': 1, 'up': 2, 'down': 0}, inplace=True)
-        data.fillna(data.mean(), inplace=True)
-        data.pop('tick_datetime')
-        
-        # 입력 칼럼
-        col_f = ['timestamp', 'weekday',
-        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
-        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
-        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
-        ]
-        data[col_f] = self.sklearn_module.standardize_fit_data(data, col_f) 
-        
-        # 예측 전 현재가 조회
-        self.upbit.set_ticker(ticker)
-        current_price_before = self.upbit.get_current_price()
-        
-        # 예측
-        prediction_softmax = self.tensorflow_module.predict_by_lstm_model(model, data[col_f], self.time_steps)
-        predicted_label = np.argmax(prediction_softmax, axis=1)
-        prediction = int(predicted_label[0])
-        
-        # 모델 파기
-        del model
-        
-        # interval만큼 대기 
-        time.sleep(interval)
-        
-        # 예측 후 현재가 조회
-        self.upbit.set_ticker(ticker)
-        current_price_after = self.upbit.get_current_price()
-        
-        # --- 상승/하락여부 예측과 실제 결과 비교 
-        if interval < 60 * 60: 
-            percentage_standard = 0.5
-        elif interval < 60 * 60 * 4: 
-            percentage_standard = 1
-        elif interval < 60 * 60 * 24: 
-            percentage_standard = 2
-
-        percentage_change = ((current_price_after - current_price_before) / current_price_before) * 100
-        
-        real = None
-        if percentage_change > percentage_standard:
-            real = 2
-        elif percentage_change < -percentage_standard:
-            real  = 0
-        else:
-            real  = 1
-            
-        if real == prediction:
-            self.log.info(f"예측 성공")
-        
-        else:
-            self.log.info(f'예측 실패')
-        
-        # 모델 파일 삭제
-        if os.path.exists(local_path):
-            os.remove(local_path)
-        
-        
-        
-          
-    
+        return df

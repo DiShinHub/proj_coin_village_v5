@@ -42,6 +42,7 @@ CREATE TABLE public.reusable_data (
 );
 CREATE INDEX ix_reusable_data_key ON public.reusable_data USING btree (key);
 
+DROP FUNCTION IF EXISTS remove_old_reusable_data;
 CREATE FUNCTION remove_old_reusable_data()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -82,6 +83,7 @@ CREATE INDEX ix_trade_result_trade_exchange ON public.trade_result (trade_exchan
 CREATE INDEX ix_trade_result_trade_ticker ON public.trade_result (trade_ticker);
 CREATE INDEX ix_trade_result_uuid ON public.trade_result (uuid);
 
+DROP FUNCTION IF EXISTS remove_old_trade_result;
 CREATE FUNCTION remove_old_trade_result()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -104,24 +106,23 @@ CREATE TABLE public.ai_back_test_result (
 	seq serial4 NOT NULL,
 	ticker varchar(100) NOT NULL,
 	model_path varchar(100) NOT NULL,
-	interval varchar(100) NOT NULL,
-	prediction varchar(100) NOT NULL,
-	real varchar(100) NOT NULL,
-	hit_yn varchar(1) NOT NULL,
-	back_test_start_dt timestamptz NULL,
-	back_test_end_dt timestamptz NULL,
+	result_row JSONB,     
+	hit_yn varchar(1) NOT NULL,   
 	runnable_services_seq int NOT NULL,
+	reg_dt timestamptz NULL,
+	reg_member_seq int4 NOT NULL,
 	CONSTRAINT ai_back_test_result_pkey PRIMARY KEY (seq)
 );
 CREATE INDEX ix_ai_back_test_result_ticker ON public.ai_back_test_result (ticker);;
 CREATE INDEX ix_ai_back_test_result_hit_yn ON public.ai_back_test_result (hit_yn);
 
+DROP FUNCTION IF EXISTS remove_old_ai_back_test_result;
 CREATE FUNCTION remove_old_ai_back_test_result()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    DELETE FROM ai_back_test_result WHERE back_test_start_dt < NOW() - INTERVAL '12 month';
+    DELETE FROM ai_back_test_result WHERE reg_dt < NOW() - INTERVAL '12 month';
     RETURN NEW;
 END;
 $$;

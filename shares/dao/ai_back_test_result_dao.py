@@ -8,19 +8,19 @@ class AiBackTestResultDao():
     def insert_ai_back_test_result(self, 
             ticker,
             model_path,
-            interval,
-            prediction,
-            real,
+            result_row,
             hit_yn,
-            back_test_start_dt,
-            back_test_end_dt,
-            runnable_services_seq
+            runnable_services_seq,
+            reg_member_seq
         ):
-
+        binds = [ticker, model_path, result_row, hit_yn, runnable_services_seq]
+    
         query = f"""
         INSERT INTO public.ai_back_test_result
-        (ticker, model_path, "interval", prediction, "real", hit_yn, back_test_start_dt, back_test_end_dt, runnable_services_seq)
-        (trade_exchange, trade_ticker, "uuid", ord_side, ord_type, price, reserved_fee, remaining_fee, paid_fee, state, "locked", executed_volume, order_dt, trade_dt, runnable_services_seq)
-        VALUES('{ticker}', '{model_path}', '{interval}', '{prediction}', '{real}', '{hit_yn}', '{back_test_start_dt}', '{back_test_end_dt}', {runnable_services_seq});
+        (ticker, model_path, result_row, hit_yn, runnable_services_seq, reg_dt, reg_member_seq)
+        VALUES(%s, %s, %s, %s, %s, now(), {reg_member_seq});
         """
-        return self.postgres.execute_query_with_commit(query) 
+        res = self.postgres.execute_query_with_commit(query=query, binds=binds)
+        return res
+    
+    
