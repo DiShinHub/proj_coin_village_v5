@@ -86,6 +86,7 @@ class UpbitTransactionDao():
             f.ticker,
             f.tick_datetime AS "tick_datetime_",
             f.data_row->>'tick_datetime' AS "tick_datetime",
+  	        f.data_row->>'timestamp' AS timestamp,
             f.data_row->>'weekday' AS "weekday",
             f.data_row->>'OPEN' AS "OPEN",
             f.data_row->>'HIGH' AS "HIGH",

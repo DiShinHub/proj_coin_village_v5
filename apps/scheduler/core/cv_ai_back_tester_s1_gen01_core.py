@@ -33,21 +33,26 @@ class CvAiBackTesterS1Gen01Core():
         
         self.seq = seq
         self.time_steps = 40
+        self.col_f = ['timestamp', 'weekday',
+        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
+        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
+        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
+        ]
         
     """
     biz
     """
-    def back_test_model(self, df, ticker, model_path, interval, interval_prev=None, is_by_prev=False):
+    def back_test_model(self, df, ticker, model_path, interval, interval_prev=None, is_by_prev=False, back_test_start_dt=datetime.datetime.now()):
+        
+        # --- 백테스팅 시작 시간
+        back_test_model_dt = datetime.datetime.now()
+        self.log.info(f'back_test_model_dt : {back_test_model_dt}')
+        self.log.info(f'args : {[ticker, model_path, interval, interval_prev, is_by_prev]}')
         
         local_path = self.minio.generate_local_path(file_exe="h5")
         try:
             interval_min = map_interval_to_interval_min(interval)
             interval_prev_min = map_interval_to_interval_min(interval_prev)
-            
-            # --- 백테스팅 시작 시간
-            back_test_start_dt = datetime.datetime.now()
-            self.log.info(f'back_test_start_dt : {back_test_start_dt}')
-            self.log.info(f'args : {[ticker, model_path, interval, interval_prev, is_by_prev]}')
             
             # --- 모델 셋팅 
             self.minio.download_file(model_path, local_path)
@@ -71,9 +76,7 @@ class CvAiBackTesterS1Gen01Core():
             wait_time = max(interval_min * 60 - elapsed, 0)
             
             # 대기 
-            self.log.info(f'wait_time : {wait_time}')
             time.sleep(wait_time)
-            self.log.info(f'done!!')
             
             # --- 피대상 가격 셋팅
             target_price = None 
@@ -84,23 +87,15 @@ class CvAiBackTesterS1Gen01Core():
                     n_minutes_ago = (datetime.datetime.now() - datetime.timedelta(minutes=interval_prev_min)).strftime('%Y-%m-%d %H:%M:%S')
 
                     target_price = self.upbit.get_target_date_price(interval=interval, date=n_minutes_ago)
-                    self.log.info(f'interval : {interval}')
-                    self.log.info(f'n_minutes_ago : {n_minutes_ago}')
-                    self.log.info(f'target_price : {target_price}')
                     
                     target_price = self.upbit.get_target_date_price(interval=interval_prev, date=n_minutes_ago)
-                    self.log.info(f'interval_prev : {interval_prev}')
-                    self.log.info(f'n_minutes_ago : {n_minutes_ago}')
-                    self.log.info(f'target_price : {target_price}')
                 
                 else:
                     target_price = current_price_before
-                    self.log.info(f'target_price : {target_price}')
                     
             # case 2 : 정시간 기준, 예측 전 가격을 피대상자로 
             else:
                 target_price = current_price_before
-                self.log.info(f'target_price : {target_price}')
                 
             # --- 예측 후 현재가 조회
             self.upbit.set_ticker(ticker)
@@ -116,7 +111,6 @@ class CvAiBackTesterS1Gen01Core():
                 
             # --- 백테스팅 종료 시간
             back_test_end_dt = datetime.datetime.now()
-            self.log.info(f'back_test_end_dt : {back_test_end_dt}')
             
             # --- 결과 저장
             result_row = json.dumps({
@@ -125,7 +119,9 @@ class CvAiBackTesterS1Gen01Core():
                 "current_price" : current_price,
                 "target_price" : target_price,
                 "up_down_side_predicted" : up_down_side_predicted,
-                "up_down_side_real" : up_down_side_real
+                "up_down_side_real" : up_down_side_real,
+                "interval" : interval,
+                "is_by_prev" : is_by_prev,
             })
             self.ai_back_test_result_dao.insert_ai_back_test_result(
                 ticker=ticker,
@@ -148,12 +144,6 @@ class CvAiBackTesterS1Gen01Core():
     subs
     """
     def pre_processing_data(self, df):
-            
-        col_f = ['timestamp', 'weekday',
-        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
-        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
-        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
-        ]
 
         data = df.copy()
         data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
@@ -161,7 +151,7 @@ class CvAiBackTesterS1Gen01Core():
         data.fillna(data.mean(), inplace=True)
         data.pop('tick_datetime')
         
-        data[col_f] = self.sklearn_module.standardize_fit_data(data, col_f) 
+        data[self.col_f] = self.sklearn_module.standardize_fit_data(data, self.col_f) 
         
         return data
 

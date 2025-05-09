@@ -88,9 +88,25 @@ class Test():
                  
     def run(self):
         
-        self.log.info(f'val1 : {str(datetime.datetime.now())}')
-        self.wait_until_next_15min()
-        self.log.info(f'val2 : {str(datetime.datetime.now())}')
+        
+        tick_datetime = "2025-04-02 00:00:00"
+        timestamp = str(datetime.datetime.strptime(tick_datetime, "%Y-%m-%d %H:%M:%S").timestamp())
+        
+        self.log.info(f'timestamp : {timestamp}')
+        
+        tick_datetime = "2025-04-02 00:00:01"
+        timestamp = str(datetime.datetime.strptime(tick_datetime, "%Y-%m-%d %H:%M:%S").timestamp())
+        
+        self.log.info(f'timestamp : {timestamp}')
+        
+        tick_datetime = "2025-04-02 00:00:02"
+        timestamp = str(datetime.datetime.strptime(tick_datetime, "%Y-%m-%d %H:%M:%S").timestamp())
+        
+        self.log.info(f'timestamp : {timestamp}')
+        
+        # self.log.info(f'val1 : {str(datetime.datetime.now())}')
+        # self.wait_until_next_15min()
+        # self.log.info(f'val2 : {str(datetime.datetime.now())}')
         
         
         return 

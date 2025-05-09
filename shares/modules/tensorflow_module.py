@@ -1,4 +1,4 @@
-
+from shares.modules.log import system_module_log
 
 from tensorflow import keras
 from tensorflow.keras.models import Sequential

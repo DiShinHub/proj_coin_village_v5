@@ -824,31 +824,13 @@ class Upbit():
 
         # 매매 성공
         if "uuid" in sell_result:
-            if "volume" in sell_result and "reserved_fee" in sell_result : 
+            if "volume" in sell_result:
+                if "reserved_fee" in sell_result: 
+                    return sell_result
 
-                volume = round(float(sell_result['volume']), 2)
-                sell_amount = None
-                if current_price:
-                    sell_amount = volume * current_price
-
-                msg = f"매도에 성공하였습니다, \
-                    \n 매도 총액 : {sell_amount}, \
-                    \n 매도량 : {volume}"
-            
-            else: 
-                msg = sell_result
-
-            return str(msg)
-
-        # API 처리 실패
-        if "error" in sell_result:
-            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(sell_result)}")
-            raise 
-        
         # 실패
-        else:
-            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(sell_result)}")
-            raise
+        self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(sell_result)}")
+        raise
     
     """
     Calculates 

@@ -2,6 +2,7 @@ from shares.modules.redis import r as redis_single
 from shares.modules.upbit import Upbit
 from shares.functions.common_function import cal_weekday_code
 
+import datetime
 import inspect
 
 class CvDataCollectorS1Gen01Core():
@@ -21,8 +22,6 @@ class CvDataCollectorS1Gen01Core():
         # system attrs
         self.feature = {}    
         self.target= {}    
-                  
-        return
     
     def init_upbit_ticker(self, ticker):
         self.reset_attr()
@@ -31,7 +30,7 @@ class CvDataCollectorS1Gen01Core():
     def collect_data(self, ticker, tick_datetime):
         
         try:
-            self.init_upbit_ticker()
+            self.init_upbit_ticker(ticker)
             
             # -- 피쳐 조회
             self.set_features(tick_datetime)
@@ -50,6 +49,7 @@ class CvDataCollectorS1Gen01Core():
         
         # 기본 값
         self.feature["tick_datetime"] = tick_datetime
+        self.feature["timestamp"] = str(datetime.datetime.strptime(tick_datetime, "%Y-%m-%d %H:%M:%S").timestamp())
         self.feature["weekday"] = cal_weekday_code(tick_datetime[0:10])
         
         # 거래 정보
@@ -114,13 +114,13 @@ class CvDataCollectorS1Gen01Core():
 
                         percentage_change = ((future_price - target_price) / target_price) * 100
                         if percentage_change > percentage_standard:
-                            res[f"change_{key}"] = "up"
+                            res[f"change_{key}"] = 2
 
                         elif percentage_change < -percentage_standard:
-                            res[f"change_{key}"]  = "down"
+                            res[f"change_{key}"]  = 0
 
                         else:
-                            res[f"change_{key}"]  = "sideways"
+                            res[f"change_{key}"]  = 1
                         
                         if is_by_prev: 
                             target_price = future_price 
