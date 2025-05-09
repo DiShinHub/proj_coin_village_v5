@@ -128,12 +128,13 @@ class runnableServicesDao():
     
     def insert_runnable_service_options(self, option_key, option_val, runnable_service_seq):
         
-        binds = [option_key,option_val,runnable_service_seq]
-        query = """
-        INSERT INTO runnable_service_options
-        (option_key, option_val, runnable_service_seq, use_yn)
-        VALUES('%s', '%s', '%s', 'Y');
-        """
+        binds = [option_key, option_val, runnable_service_seq, 'Y']
+    
+        query = f"""
+            INSERT INTO public.runnable_service_options
+                (seq, option_key, option_val, runnable_service_seq, use_yn)
+                VALUES(nextval('runnable_service_options_seq_seq'::regclass), %s, %s, %s);
+        """ 
         
         return self.postgres.execute_query_with_commit(query, binds) 
         
@@ -148,7 +149,7 @@ class runnableServicesDao():
         # set query
         set_cluase = ""
         for key, val in params.items():
-            set_cluase = """ '%s' = '%s',""", (key, val)
+            set_cluase = f""" %s = %s,""", (key, val)
         if not set_cluase:
             raise Exception("no params found")
         
