@@ -3,7 +3,7 @@ from shares.modules.upbit import Upbit
 from shares.dao.trade_result_dao import TradeResultDao
 from shares.decorations.transaction_lock import *
 from shares.constance.upbit_constance import UpbitConst
-from shares.functions.common_function import generate_micro_date
+from shares.functions.common_function import generate_now_date
 
 import datetime
 import inspect
@@ -36,7 +36,7 @@ class CvAutoTraderS2Gen01Core():
         self.order_seed = 0                   # 주문 시드
         self.order_amount = 0                 # 주문 비중
         self.order_hurdle = 0                 # 주문 허들
-        self.order_last_dt = 0                # 마지막 주문 시간
+        self.order_last_dt = None             # 마지막 주문 시간
         
         # --- prefixes
         self.pref_bbbb_price = f"night_owls_bundle_bbbb_price_{self.ticker}"            # bbbb 가격 
@@ -119,7 +119,7 @@ class CvAutoTraderS2Gen01Core():
         if self.order_hurdle: self.order_hurdle = float(self.order_hurdle)
         else:  self.order_hurdle = self.order_hurdle_iv
         
-        if self.order_last_dt: self.order_last = datetime.datetime.strptime(self.order_last, "%Y-%m-%d %H:%M:%S")
+        if self.order_last_dt: self.order_last_dt = datetime.datetime.strptime(self.order_last_dt, "%Y-%m-%d %H:%M:%S")
         else: self.order_last_dt = datetime.datetime.now()
 
     @block_when_lock(lock_key=UpbitConst.TRANSACTION_BLOCK_KEY)
@@ -137,12 +137,6 @@ class CvAutoTraderS2Gen01Core():
     """
     @block_when_lock(lock_key=UpbitConst.TRANSACTION_BLOCK_KEY)
     def off_bbbb(self):
-            
-        self.log.info(f"self.bollinger_state_crr : {self.bollinger_state_crr}")
-        self.log.info(f"self.bollinger_state_prev : {self.bollinger_state_prev}")
-        self.log.info(f"self.order_last : {self.order_last}")
-        self.log.info(f"self.sideways_hours_limit : {self.sideways_hours_limit}")
-        self.log.info(f"is over elapsed : {self.sideways_hours_limit > (datetime.datetime.now()- self.order_last)}")
 
         # 하락세 감지, 모니터링 돌입
         if self.bollinger_state_crr == 1 and self.bollinger_state_prev == 1:
@@ -151,7 +145,7 @@ class CvAutoTraderS2Gen01Core():
         # CASE 2: 매수 없이 상승세 감지      
         elif self.bollinger_state_crr in ([6]) and\
             self.bollinger_state_prev in ([5, 6]) and\
-            self.sideways_hours_limit > (datetime.datetime.now()- self.order_last):
+            datetime.timedelta(hours=self.sideways_hours_limit) < (datetime.datetime.now()- self.order_last_dt):
             
             self.reset_order(f"{self.slack_post_prefix} : {self.ticker}의 상승세를 감지하였으며 {self.sideways_hours_limit}시간 동안 거래를 감지하지 못하였습니다. 매매롤 초기화 합니다.")
     
@@ -201,10 +195,6 @@ class CvAutoTraderS2Gen01Core():
             
             # CASE 1-3 : 정상 케이스, 매수
             else:
-                self.log.info(f"self.upbit.get_krw_balance() : {self.upbit.get_krw_balance()}")
-                self.log.info(f"self.order_percent_iv : {self.order_percent_iv}")
-                self.log.info(f"self.order_seed : {self.order_seed}")
-                self.log.info(f"self.order_amount : {self.order_amount}")
                 self.post_bbbb()
 
         # CASE 2: 매수 없이 상승세 감지      
@@ -216,8 +206,11 @@ class CvAutoTraderS2Gen01Core():
     def post_bbbb(self):
         
         # 매매 진행
-        order_dt = str(generate_micro_date())
+        order_dt = str(generate_now_date())
         buy_result = self.upbit.buy_coin(self.order_amount)
+
+        # 메세지 포스트
+        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} : {self.ticker}의 매수를 성공하였습니다.\n 주문가 : {round(float(buy_result['price']), 2)}, 수수료 : {round(float(buy_result['reserved_fee']))}\n\n")
 
         # 매매 기록 및 강도 올림
         if self.redis.hget_data(self.pref_bbbb_price, self.ticker):
@@ -225,13 +218,12 @@ class CvAutoTraderS2Gen01Core():
             self.redis.hupd_date(self.pref_order_amount, self.ticker, (self.order_amount * self.order_percent_ir)) 
             self.redis.hupd_date(self.pref_order_hurdle, self.ticker, (self.order_hurdle * self.order_hurdle_ir))  
             self.redis.hupd_date(self.pref_order_last_dt, self.ticker, order_dt) 
-        
-        # 매매 결과 저장 및 메세지 포스트
-        msg = None
+
+        # 매매 결과 저장 
         try:
             self.trade_result_dao.insert_trade_result(
                 trade_exchange="upbit",
-                trade_ticker="KRW-BTC",
+                trade_ticker=self.ticker,
                 uuid=buy_result.get("uuid"),
                 ord_side=buy_result.get("side"),
                 ord_type=buy_result.get("ord_type"),
@@ -246,12 +238,9 @@ class CvAutoTraderS2Gen01Core():
                 trade_dt=str(buy_result.get("created_at")),
                 runnable_services_seq=self.runnable_services_seq
             )
-            msg = f"매수에 성공하였습니다, \n 티커 : {self.ticker} ,\n 주문가 : {round(float(buy_result['price']), 2)}, 수수료 : {round(float(buy_result['reserved_fee']))}"
             
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
-          
-        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} : {self.ticker}의 매수를 성공하였습니다. \n {msg} \n\n")
         
     """
     BBBB reset
@@ -273,6 +262,7 @@ class CvAutoTraderS2Gen01Core():
         self.redis.hdel_data(self.pref_bollinger_state, self.ticker)
         self.redis.hdel_data(self.pref_order_amount, self.ticker)
         self.redis.hdel_data(self.pref_order_hurdle, self.ticker)
+        self.redis.hdel_data(self.pref_order_last_dt, self.ticker)
         
         self.redis.save_msg_on_Q(msg)
         

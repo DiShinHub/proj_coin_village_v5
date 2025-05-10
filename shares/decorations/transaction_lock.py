@@ -22,7 +22,7 @@ def lock_transaction(lock_key, ttl=10, hold=0):
         def wrapper(*args, **kwargs):
             
             # 논리적 충돌 방지를 위한 트릭킹 
-            time.sleep(0.25)
+            time.sleep(0.375)
             if redis_client.exists(lock_key):
                 raise Exception(f"blocked by overlab transaction, block type")
             

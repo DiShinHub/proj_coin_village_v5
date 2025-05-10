@@ -74,6 +74,17 @@ class Test():
                             
     def run(self):
         
+        self.sideways_hours_limit = 24
+
+        self.order_last_dt ="2025-05-01 09:00:00"
+        self.order_last_dt = datetime.datetime.strptime(self.order_last_dt, "%Y-%m-%d %H:%M:%S")
+
+        timegap = (datetime.datetime.now() - self.order_last_dt)
+
+        self.log.info(f"timegap : {timegap}")
+
+        self.log.info(datetime.timedelta(hours=self.sideways_hours_limit) > timegap)
+        
         # order_dt = str(generate_now_date())
         # self.ticker = "KRW-TEST"
         # self.pref_order_last = "testsestse"
