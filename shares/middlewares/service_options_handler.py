@@ -24,12 +24,9 @@ class OptionHandler():
         
         # --- DB에서 서비스 옵션 조회 
         service_options = runnableServicesDao().get_runnable_service_options(seq)
-        if not service_options:
-            raise ValueError(f"Service options required: {service_options}")
-        
         incoming_options = {opt["option_key"] for opt in service_options}
         
-        # --- 누락 된 옵션이 있으면 raise
+        # --- 시스템을 기준으로 DB에 누락 된 옵션이 있으면 raise
         missing_options = list(required_options - incoming_options)  
         if missing_options:
             raise ValueError(f"Missing options required: {missing_options}")

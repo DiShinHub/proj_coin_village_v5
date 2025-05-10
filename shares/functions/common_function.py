@@ -416,3 +416,24 @@ def convert_eval_safe(val):
     
     except (ValueError, SyntaxError):
         return val  # 그냥 문자열로 둠
+
+def map_interval_to_interval_min(interval):
+    
+    # interval_min을 interval을 통해 조회 
+    if not interval:
+        return None
+
+    elif interval == "minute15":
+        interval_min = 15
+    elif interval == "minute30":
+        interval_min = 30
+    elif interval == "hour1":
+        interval_min = 1*60
+    elif interval == "hour4":
+        interval_min = 4*60
+    elif interval == "hour12":
+        interval_min = 12*60
+    elif interval == "day":
+        interval_min = 24*60
+    
+    return interval_min

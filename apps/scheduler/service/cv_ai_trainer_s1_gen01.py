@@ -1,19 +1,20 @@
 from shares.middlewares.service_options_handler import OptionHandler
-from scheduler.dao.upbit_transaction_dao import UpbitTransactionDao
 from shares.modules.log import Log
-from shares.functions.common_function import get_years_between_str, split_date_range_by_year, generate_micro_date
+from shares.modules.redis import r as redis_single
+from shares.dao.runnable_services_dao import runnableServicesDao
+from shares.functions.common_function import get_years_between_str, split_date_range_by_year
 
+from scheduler.dao.upbit_transaction_dao import UpbitTransactionDao
 from scheduler.core.cv_ai_trainer_s1_gen01_core import CvAiTrainerS1Gen01Core
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-import numpy as np
 import pandas as pd
 import datetime
 
 import os
 import inspect
-
+import time
 
 class CvAiTrainerS1Gen01(OptionHandler):
     """
@@ -29,45 +30,52 @@ class CvAiTrainerS1Gen01(OptionHandler):
     
     def __init__(self, seq):
         self.log = Log(os.path.basename(__file__)).get_logger()
+        self.redis = redis_single
+        self.runnable_services_dao = runnableServicesDao()
         self.upbit_transaction_dao = UpbitTransactionDao()
         self.cv_ai_trainer_s1_gen01_core = CvAiTrainerS1Gen01Core(self.log)
          
         # service attrs
+        self.scheduler_start_day = None
+        self.scheduler_start_hour = None
+        self.scheduler_start_min = None
+        self.auth_back_test = None
+        self.auth_back_test_seq = None
+        
         self.ticker_list = None
         self.dataset_load_term = None
+        
         self.time_steps = None  
         self.batch_size = None
         self.epochs = None
         self.early_stop = None
+  
+        self.col_f = None
+        self.col_t = None
          
         self.init_options(seq)
+        self.seq = seq
+        self.model_path_list = []
         
     def regist(self):
         
-        # TEST Block
-        # scheduler = BlockingScheduler()
-        # scheduler.add_job(self.run, 'cron', hour=self.scheduler_start_hour, minute=self.scheduler_start_min)
-        # scheduler.start()
-        # self.log.info(f"스케쥴러는 매일 {self.ticker_list}를 대상으로 {self.dataset_generate_term}일의 데이터를 수집하며, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행됩니다.")
-        
-        # TEST
-        self.run()
+        redis_single.save_msg_on_Q(f"{self.slack_post_prefix} 스케쥴러 등록. {self.ticker_list}를 대상으로 {self.dataset_load_term}일의 데이터로 학습하며, 매월 {self.scheduler_start_day}일일, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행.")
+        scheduler = BlockingScheduler()
+        scheduler.add_job(self.run, 'cron', day=self.scheduler_start_day, hour=self.scheduler_start_hour, minute=self.scheduler_start_min)
+        scheduler.start()
         
     def run(self):
         
         try:
-            # set model folder 
-            model_folder_path = self.cv_ai_trainer_s1_gen01_core.set_model_folder_path()
-            
-            # loop - generate models
+            # loop - models 생성
             for ticker in self.ticker_list:
                 df = self.get_dataframe(ticker)
-                model_path_list = self.generate_model(ticker, df)
+                self.model_path_list = self.model_path_list + self.generate_model(ticker, df)
             
-            # TODO regist back tester or execute
-            self.log.info(f"model_folder_path : {model_folder_path}")
-            self.log.info(f"model_path_list : {model_path_list}")
-    
+            # 자동 백테스팅
+            if self.auth_back_test == "Y":
+                self.execute_auto_back_test()
+        
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
             
@@ -96,23 +104,40 @@ class CvAiTrainerS1Gen01(OptionHandler):
         
         # --- 데이터프레임으로 변환
         df = pd.DataFrame(upbit_transactions_list)
-        df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
+        # df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
         
         return df 
     
     def generate_model(self, ticker, df):
         
-        # option 
+        # 옵션 셋팅
+        self.cv_ai_trainer_s1_gen01_core.set_feature(self.col_f)
+        self.cv_ai_trainer_s1_gen01_core.set_target(self.col_t)
         self.cv_ai_trainer_s1_gen01_core.set_hyper_parameters(
             time_steps=self.time_steps,
             batch_size=self.batch_size,
             epochs=self.epochs,
             early_stop=self.early_stop
         )
+        self.cv_ai_trainer_s1_gen01_core.set_model_folder_path()
         
-        # gen
+        # 모델 생성
         model_path_list = self.cv_ai_trainer_s1_gen01_core.generate_model(
-            df=df,
-            ticker=ticker
+            ticker=ticker,
+            df=df
         )
         return model_path_list
+
+    def execute_auto_back_test(self):
+        
+        #  옵션 셋팅
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="model_path_list", option_val=self.model_path_list, runnable_service_seq=self.auth_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="time_steps", option_val=self.time_steps, runnable_service_seq=self.auth_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="col_f", option_val=self.col_f, runnable_service_seq=self.auth_back_test_seq)
+        
+        # 백테스팅 재시작
+        params = {"use_yn" : "N"}
+        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auth_back_test_seq)
+        time.sleep(5)
+        params = {"use_yn" : "Y"}
+        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auth_back_test_seq)
