@@ -39,8 +39,8 @@ class CvAiTrainerS1Gen01(OptionHandler):
         self.scheduler_start_day = None
         self.scheduler_start_hour = None
         self.scheduler_start_min = None
-        self.auth_back_test = None
-        self.auth_back_test_seq = None
+        self.auto_back_test = None
+        self.auto_back_test_seq = None
         
         self.ticker_list = None
         self.dataset_load_term = None
@@ -59,7 +59,7 @@ class CvAiTrainerS1Gen01(OptionHandler):
         
     def regist(self):
         
-        redis_single.save_msg_on_Q(f"{self.slack_post_prefix} 스케쥴러 등록. {self.ticker_list}를 대상으로 {self.dataset_load_term}일의 데이터로 학습하며, 매월 {self.scheduler_start_day}일일, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행.")
+        self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 스케쥴러 등록. {self.ticker_list}를 대상으로 {self.dataset_load_term}일의 데이터로 학습하며, 매월 {self.scheduler_start_day}일, {self.scheduler_start_hour}시 {self.scheduler_start_min}분에 실행.")
         scheduler = BlockingScheduler()
         scheduler.add_job(self.run, 'cron', day=self.scheduler_start_day, hour=self.scheduler_start_hour, minute=self.scheduler_start_min)
         scheduler.start()
@@ -73,8 +73,8 @@ class CvAiTrainerS1Gen01(OptionHandler):
                 self.model_path_list = self.model_path_list + self.generate_model(ticker, df)
             
             # 자동 백테스팅
-            if self.auth_back_test == "Y":
-                self.execute_auto_back_test()
+            if self.auto_back_test == "Y":
+                self.execute_back_test()
         
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
@@ -104,7 +104,6 @@ class CvAiTrainerS1Gen01(OptionHandler):
         
         # --- 데이터프레임으로 변환
         df = pd.DataFrame(upbit_transactions_list)
-        # df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
         
         return df 
     
@@ -128,16 +127,17 @@ class CvAiTrainerS1Gen01(OptionHandler):
         )
         return model_path_list
 
-    def execute_auto_back_test(self):
+    def execute_back_test(self):
         
-        #  옵션 셋팅
-        self.runnable_services_dao.upsert_runnable_service_options(option_key="model_path_list", option_val=self.model_path_list, runnable_service_seq=self.auth_back_test_seq)
-        self.runnable_services_dao.upsert_runnable_service_options(option_key="time_steps", option_val=self.time_steps, runnable_service_seq=self.auth_back_test_seq)
-        self.runnable_services_dao.upsert_runnable_service_options(option_key="col_f", option_val=self.col_f, runnable_service_seq=self.auth_back_test_seq)
+        #  백테스팅 옵션 생성
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="ticker_list", option_val=str(self.ticker_list).replace("'", "\""), runnable_service_seq=self.auto_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="model_path_list", option_val=str(self.model_path_list).replace("'", "\""), runnable_service_seq=self.auto_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="col_f", option_val=str(self.col_f).replace("'", "\""), runnable_service_seq=self.auto_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="time_steps", option_val=self.time_steps, runnable_service_seq=self.auto_back_test_seq)
         
         # 백테스팅 재시작
         params = {"use_yn" : "N"}
-        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auth_back_test_seq)
+        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)
         time.sleep(5)
         params = {"use_yn" : "Y"}
-        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auth_back_test_seq)
+        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)

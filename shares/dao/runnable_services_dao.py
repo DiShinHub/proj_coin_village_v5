@@ -115,51 +115,35 @@ class runnableServicesDao():
             option_key=option_key
         )
         if not runnable_service_options:
-            self.insert_runnable_service_options(option_key, option_val, runnable_service_seq)
+            return self.insert_runnable_service_option(option_key, option_val, runnable_service_seq)
         
         else:
-            params = {
-                "option_key" : option_key,
-                "option_val" : option_val
-            }
-            self.update_runnable_service_option(params, runnable_service_seq["seq"])
-            
-        return 
+            return self.update_runnable_service_option_val_by_option_key(option_key, option_val, runnable_service_seq)
     
-    def insert_runnable_service_options(self, option_key, option_val, runnable_service_seq):
-        
-        binds = [option_key, option_val, runnable_service_seq, 'Y']
+    def insert_runnable_service_option(self, option_key, option_val, runnable_service_seq):
     
         query = f"""
             INSERT INTO public.runnable_service_options
                 (seq, option_key, option_val, runnable_service_seq, use_yn)
-                VALUES(nextval('runnable_service_options_seq_seq'::regclass), %s, %s, %s);
+                VALUES(nextval('runnable_service_options_seq_seq'::regclass), '{option_key}', '{option_val}', {runnable_service_seq}, 'Y');
         """ 
         
-        return self.postgres.execute_query_with_commit(query, binds) 
+        return self.postgres.execute_query_with_commit(query) 
         
-    def update_runnable_service_option(self, params, seq):
-        
-        binds = [key, val]
+    def update_runnable_service_option_val_by_option_key(self, option_key, option_val, runnable_service_seq):
         
         query = f"""
             UPDATE runnable_service_options SET
         """
         
         # set query
-        set_cluase = ""
-        for key, val in params.items():
-            set_cluase = f""" %s = %s,""", (key, val)
-        if not set_cluase:
-            raise Exception("no params found")
-        
-        set_cluase = set_cluase[:-1]
+        set_cluase = f""" option_val = '{option_val}'"""
         
         # where query
-        where_cluase = f" WHERE seq = {seq}"
+        where_cluase = f" WHERE option_key = '{option_key}' AND runnable_service_seq = {runnable_service_seq}"
         
         # bind
         query += set_cluase
         query += where_cluase
         
-        return self.postgres.execute_query_with_commit(query, binds) 
+        return self.postgres.execute_query_with_commit(query) 

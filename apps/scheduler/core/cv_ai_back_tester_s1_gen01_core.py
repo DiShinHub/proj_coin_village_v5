@@ -19,7 +19,7 @@ import inspect
 
 
 class CvAiBackTesterS1Gen01Core():
-    slack_post_prefix = ":bee: Lab Bee."
+    slack_post_prefix = ":bee: Back Test Bee."
         
     
     def __init__(self, log, seq):
@@ -32,22 +32,18 @@ class CvAiBackTesterS1Gen01Core():
         self.ai_back_test_result_dao = AiBackTestResultDao()
         
         self.seq = seq
-        self.time_steps = 40
-        self.col_f = ['timestamp', 'weekday',
-        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
-        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
-        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
-        ]
+        
+    def set_feature(self, col_f):
+        self.col_f = col_f
+        return self.col_f
+        
+    def set_hyper_parameters(self, time_steps):
+        self.time_steps = time_steps  # 시퀀스 길이 설정
         
     """
     biz
     """
     def back_test_model(self, df, ticker, model_path, interval, interval_prev=None, is_by_prev=False, back_test_start_dt=datetime.datetime.now()):
-        
-        # --- 백테스팅 시작 시간
-        back_test_model_dt = datetime.datetime.now()
-        self.log.info(f'back_test_model_dt : {back_test_model_dt}')
-        self.log.info(f'args : {[ticker, model_path, interval, interval_prev, is_by_prev]}')
         
         local_path = self.minio.generate_local_path(file_exe="h5")
         try:
@@ -85,9 +81,6 @@ class CvAiBackTesterS1Gen01Core():
             if is_by_prev == True:
                 if interval_prev_min:
                     n_minutes_ago = (datetime.datetime.now() - datetime.timedelta(minutes=interval_prev_min)).strftime('%Y-%m-%d %H:%M:%S')
-
-                    target_price = self.upbit.get_target_date_price(interval=interval, date=n_minutes_ago)
-                    
                     target_price = self.upbit.get_target_date_price(interval=interval_prev, date=n_minutes_ago)
                 
                 else:
@@ -146,10 +139,10 @@ class CvAiBackTesterS1Gen01Core():
     def pre_processing_data(self, df):
 
         data = df.copy()
-        data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
-        data.replace({'sideways': 1, 'up': 2, 'down': 0}, inplace=True)
+        #data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
+        #data.replace({'sideways': 1, 'up': 2, 'down': 0}, inplace=True)
         data.fillna(data.mean(), inplace=True)
-        data.pop('tick_datetime')
+        #data.pop('tick_datetime')
         
         data[self.col_f] = self.sklearn_module.standardize_fit_data(data, self.col_f) 
         

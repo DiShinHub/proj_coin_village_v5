@@ -1,5 +1,6 @@
 from shares.middlewares.service_options_handler import OptionHandler
 from shares.modules.log import Log
+from shares.modules.redis import r as redis_single
 from shares.modules.minio import MinioModule
 from shares.modules.upbit import Upbit
 from shares.modules.tensorflow_module import TensorflowModule
@@ -29,16 +30,17 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     Service group : AiTrainer
     Service no : 1
     Generation : 01 
-    Product Name : Lab Bee
+    Product Name : Back Test Bee
     
     Role : 
     1. KRW-BTC 예측 모델 생성
     """
-    slack_post_prefix = ":bee: Lab Bee."
+    slack_post_prefix = ":bee: Back Test Bee."
     
     def __init__(self, seq):
         
         self.log = Log(os.path.basename(__file__)).get_logger()
+        self.redis = redis_single
         self.minio = MinioModule()
         self.upbit = Upbit()
         self.tensorflow_module = TensorflowModule()
@@ -47,27 +49,11 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         
         self.seq = seq
          
-        # service attrs : TODO auto gen by db 
-        self.model_path_list = [
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_15min_20250507_173104166362.h5', 
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_30min_20250507_174214634777.h5', 
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_1hour_20250507_175810798721.h5', 
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_4hour_20250507_180317398963.h5', 
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_12hour_20250507_180917352605.h5', 
-            'models/2025/05/07/KRW-BTC_by_ontime_change_after_1day_20250507_181317953458.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_15min_20250507_181848993081.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_30min_20250507_182416527925.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_1hour_20250507_183022829968.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_4hour_20250507_183806032448.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_12hour_20250507_184153850112.h5', 
-            'models/2025/05/07/KRW-BTC_by_prev_change_after_1day_20250507_184541721808.h5'
-        ]
-        self.time_steps = 40
-        self.col_f = ['timestamp', 'weekday',
-        'OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'VOLUME_MA5', 'VOLUME_MA20',
-        'VOLUME_RATIO', 'OBV', 'VWAP', 'VOLUME_VOLATILITY', 'VOLUME_SPIKE',
-        'RSI', 'MACD', 'MACD_SIGNAL', 'BOLLINGER_PARTITION'
-        ]
+        # service attrs
+        self.ticker_list = None
+        self.model_path_list = None
+        self.col_f = None
+        self.time_steps = None
         self.init_options(seq)
         
     """
@@ -76,11 +62,12 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     def regist(self):
         
         try:
-            
-            # --- 정각, 15분, 30분, 45분마다 실행하도록 조정 
+            # --- 정각, 15분, 30분, 45분에 실행하도록 조정 
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 대기. {self.ticker_list}를 대상으로 15분 단위에 맞춰 실행.")
             self.wait_until_next_15min()
             
             # --- 스케쥴러 등록
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix}. 백테스팅 실행.")
             for model_path in self.model_path_list:
                 self.regist_scheduler(
                     ticker="KRW-BTC", 
@@ -171,20 +158,24 @@ class CvAiBackTesterS1Gen01(OptionHandler):
             
         # --- 백테스팅 시작 시간
         back_test_start_dt = datetime.datetime.now()
-        self.log.info(f'back_test_start_dt : {back_test_start_dt}')
     
         # --- 예측 데이터 조회
         df = self.get_target_prediction_data(ticker)
         
-        # --- 백테스팅 요청
+        # --- 백테스팅 
         cv_ai_back_tester_s1_gen01_core = CvAiBackTesterS1Gen01Core(self.log, self.seq)
+        
+        cv_ai_back_tester_s1_gen01_core.set_feature(self.col_f)
+        cv_ai_back_tester_s1_gen01_core.set_hyper_parameters(
+            time_steps=self.time_steps
+        )
         cv_ai_back_tester_s1_gen01_core.back_test_model(df, ticker, model_path, interval, interval_prev, is_by_prev, back_test_start_dt)
     
     @try_again(num=10)
     def get_target_prediction_data(self, ticker):
         
-        # 동시 호출로 인한 제한 완화 
-        delay = random.uniform(0.1, 1.1)  
+        # 동시 호출로 인한 API 호출 제한 완화 
+        delay = random.uniform(0.1, 2.1)  
         time.sleep(delay)
 
         now = datetime.datetime.now()

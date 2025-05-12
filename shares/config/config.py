@@ -53,8 +53,9 @@ class Config:
             secure=False,
         )
         minio_bucket = os.getenv("MINIO_BUCKET")
+        minio_local = os.getenv("MINIO_LOCAL")
 
-        return external_client, minio_bucket
+        return external_client, minio_bucket, minio_local
 
     def set_slack(self):
         

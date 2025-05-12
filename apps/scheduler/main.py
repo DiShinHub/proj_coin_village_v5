@@ -1,4 +1,3 @@
-from shares.middlewares.app_init_handler import AppInitHandler
 from shares.middlewares.service_process_handler import ProcessHandler
 
 class SchedulerMain(ProcessHandler):
@@ -11,7 +10,5 @@ class SchedulerMain(ProcessHandler):
             
 if __name__ == "__main__":
     
-    AppInitHandler()
-    
-    scheduler_main = SchedulerMain().run()
+    scheduler_main = SchedulerMain()
     scheduler_main.run()
