@@ -78,6 +78,29 @@ class DataFrame():
         
         return df
     
+    def convert_numeric_columns(self, df):
+        """
+        def description : 수치화 변환, 변환 불가하면 유지됨
+
+        Parameters
+        ----------
+        df : 데이터 프레임 (df)
+
+        Returns
+        -------
+        df : 수치화 변환 된 데이터 프레임 (df)
+        """
+        
+    
+        for col in df.columns:
+            try:
+                df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", "").str.strip(), errors='raise')
+                
+            except Exception as e:
+                pass
+        
+        return df
+    
     def read_dataframe(self, file_path, exe="xlsx"):
         """
         def description : 데이터프레임 리드
@@ -142,3 +165,4 @@ class DataFrame():
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")    
             raise
+            

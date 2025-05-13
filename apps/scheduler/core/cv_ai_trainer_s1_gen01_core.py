@@ -3,6 +3,7 @@ from shares.modules.upbit import Upbit
 from shares.modules.minio import MinioModule
 from shares.modules.tensorflow_module import TensorflowModule
 from shares.modules.sklearn_module import SklearnModule
+from shares.modules.dataframe import DataFrame
 from shares.functions.common_function import generate_micro_date
 
 import pandas as pd
@@ -20,6 +21,7 @@ class CvAiTrainerS1Gen01Core():
         self.minio = MinioModule()
         self.tensorflow_module = TensorflowModule()
         self.sklearn_module = SklearnModule()
+        self.dataframe = DataFrame()
         
         self.model_folder_path = ""
             
@@ -53,9 +55,7 @@ class CvAiTrainerS1Gen01Core():
         model_path_list = []
         try:
             # 전처리
-            data = df.copy()
-            data.fillna(data.mean(), inplace=True)
-            data = self.sklearn_module.standardize_fit_data(data, self.col_f)
+            data = self.pre_processing_data(df)
 
             # 다단 모델 생성 후 업로드
             for idx, target in enumerate(self.col_t):
@@ -72,9 +72,26 @@ class CvAiTrainerS1Gen01Core():
                 
                 # 문자열 레이블을 숫자로 인코딩
                 Y = self.sklearn_module.encode_labels(Y)
+                
+                # 가중치 계산 (균등화 적용)
+                class_weight = self.sklearn_module.calculate_class_weight(Y)
+                
+                # # 역비례 가중치 적용
+                # class_weight[0] = class_weight[0] * 2
+                # class_weight[1] = class_weight[0] / 2
+                # class_weight[2] = class_weight[0] * 2
+                
+                # # 가중치 지정 
+                # class_weight = {
+                #     0: 1.0,
+                #     1: 2.0,
+                #     2: 5.0
+                # }
+                # self.log.info(f'class_weight_dict : {class_weight_dict}')
+                # raise
         
                 # 모델 생성
-                model = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps, self.batch_size, self.epochs, self.early_stop)
+                model = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps, self.batch_size, self.epochs, self.early_stop, class_weight)
                 model.save(local_path, save_format="h5")
                 self.minio.upload_file(minio_path, local_path)
             
@@ -92,4 +109,20 @@ class CvAiTrainerS1Gen01Core():
                 for local_path in local_path_list:
                     if os.path.exists(local_path):
                         os.remove(local_path)
-          
+    
+    """
+    subs
+    """
+    def pre_processing_data(self, df):
+
+        try:
+            data = df.copy()
+            data = self.dataframe.convert_numeric_columns(data)
+            data.fillna(data.mean(), inplace=True)
+            data = self.sklearn_module.standardize_fit_data(data, self.col_f)
+            
+            return data
+            
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            raise

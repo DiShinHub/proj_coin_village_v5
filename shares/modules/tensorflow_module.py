@@ -35,7 +35,7 @@ class TensorflowModule():
             
         return np.array(Xs)
 
-    def train_by_lstm_model(self, X, Y, time_steps, batch_size, epochs, early_stop=False):
+    def train_by_lstm_model(self, X, Y, time_steps, batch_size, epochs, early_stop=False, class_weight=None):
         
         X, Y = self.create_sequences(X, Y, time_steps)
         
@@ -55,11 +55,12 @@ class TensorflowModule():
         # 모델 학습
         model.fit(
             X, Y,
-            epochs=epochs,
-            batch_size=batch_size,
-            validation_split=0.1,
-            verbose=1,
-            callbacks=[self.early_stopping]  # 조기 종료 추가
+            epochs=epochs,                      # 전체 데이터셋을 몇 번 반복해서 학습할지
+            batch_size=batch_size,              # 한 번에 학습에 사용할 데이터의 개수
+            validation_split=0.1,               # 학습 데이터 중 10%를 검증용(validation) 으로 사용
+            verbose=0,                          # 출력 레벨 설정: 0: 아무 출력 없음, 1: progress bar로 출력, 2: 에포크마다 한 줄 요약
+            class_weight=class_weight,          # 가중치 
+            callbacks=[self.early_stopping]     # 조기 종료 추가
         )
         return model
     

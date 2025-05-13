@@ -3,7 +3,9 @@ from shares.modules.minio import MinioModule
 from shares.modules.upbit import Upbit
 from shares.modules.tensorflow_module import TensorflowModule
 from shares.modules.sklearn_module import SklearnModule
+from shares.modules.dataframe import DataFrame
 from shares.functions.common_function import map_interval_to_interval_min
+from shares.decorations.try_again import try_again
 from shares.dao.ai_back_test_result_dao import AiBackTestResultDao
 
 from tensorflow.keras.models import load_model
@@ -29,6 +31,7 @@ class CvAiBackTesterS1Gen01Core():
         self.upbit = Upbit()
         self.tensorflow_module = TensorflowModule()
         self.sklearn_module = SklearnModule()
+        self.dataframe = DataFrame()
         self.ai_back_test_result_dao = AiBackTestResultDao()
         
         self.seq = seq
@@ -46,6 +49,8 @@ class CvAiBackTesterS1Gen01Core():
     def back_test_model(self, df, ticker, model_path, interval, interval_prev=None, is_by_prev=False, back_test_start_dt=datetime.datetime.now()):
         
         local_path = self.minio.generate_local_path(file_exe="h5")
+        self.upbit.set_ticker(ticker)
+        
         try:
             interval_min = map_interval_to_interval_min(interval)
             interval_prev_min = map_interval_to_interval_min(interval_prev)
@@ -58,8 +63,7 @@ class CvAiBackTesterS1Gen01Core():
             data = self.pre_processing_data(df)
             
             # --- 예측 전 현재가 
-            self.upbit.set_ticker(ticker)
-            current_price_before = self.upbit.get_current_price()
+            current_price_before = self.get_current_price()
             
             # --- 예측
             up_down_side_predicted = self.execute_prediction(model, data)
@@ -81,7 +85,8 @@ class CvAiBackTesterS1Gen01Core():
             if is_by_prev == True:
                 if interval_prev_min:
                     n_minutes_ago = (datetime.datetime.now() - datetime.timedelta(minutes=interval_prev_min)).strftime('%Y-%m-%d %H:%M:%S')
-                    target_price = self.upbit.get_target_date_price(interval=interval_prev, date=n_minutes_ago)
+                    target_price = self.get_target_price(interval_prev, n_minutes_ago)
+                    #target_price = self.upbit.get_target_date_price(interval=interval_prev, date=n_minutes_ago)
                 
                 else:
                     target_price = current_price_before
@@ -91,8 +96,7 @@ class CvAiBackTesterS1Gen01Core():
                 target_price = current_price_before
                 
             # --- 예측 후 현재가 조회
-            self.upbit.set_ticker(ticker)
-            current_price = self.upbit.get_current_price()
+            current_price = self.get_current_price()
             
             # --- 실제 상승,하락,횡보여부 조회
             up_down_side_real = self.decide_up_down_side(interval_min, current_price, target_price)
@@ -139,12 +143,9 @@ class CvAiBackTesterS1Gen01Core():
     def pre_processing_data(self, df):
 
         data = df.copy()
-        #data['timestamp'] = pd.to_datetime(data['tick_datetime']).astype(int) / 10**9
-        #data.replace({'sideways': 1, 'up': 2, 'down': 0}, inplace=True)
+        data = self.dataframe.convert_numeric_columns(data)
         data.fillna(data.mean(), inplace=True)
-        #data.pop('tick_datetime')
-        
-        data[self.col_f] = self.sklearn_module.standardize_fit_data(data, self.col_f) 
+        data = self.sklearn_module.standardize_fit_data(data, self.col_f)
         
         return data
 
@@ -177,3 +178,10 @@ class CvAiBackTesterS1Gen01Core():
         
         return real
     
+    @try_again(num=10)
+    def get_current_price(self):
+        return self.upbit.get_current_price()
+    
+    @try_again(num=10)
+    def get_target_price(self, interval_prev, n_minutes_ago):
+        return self.upbit.get_target_date_price(interval=interval_prev, date=n_minutes_ago)

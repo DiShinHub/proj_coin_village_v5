@@ -2,9 +2,9 @@ from shares.middlewares.service_options_handler import OptionHandler
 from shares.modules.log import Log
 from shares.modules.redis import r as redis_single
 from shares.dao.runnable_services_dao import runnableServicesDao
+from shares.dao.upbit_transaction_dao import UpbitTransactionDao
 from shares.functions.common_function import get_years_between_str, split_date_range_by_year
 
-from scheduler.dao.upbit_transaction_dao import UpbitTransactionDao
 from scheduler.core.cv_ai_trainer_s1_gen01_core import CvAiTrainerS1Gen01Core
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -138,6 +138,6 @@ class CvAiTrainerS1Gen01(OptionHandler):
         # 백테스팅 재시작
         params = {"use_yn" : "N"}
         self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)
-        time.sleep(5)
+        time.sleep(2.5)
         params = {"use_yn" : "Y"}
         self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)

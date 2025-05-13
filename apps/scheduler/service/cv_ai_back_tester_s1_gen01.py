@@ -62,12 +62,12 @@ class CvAiBackTesterS1Gen01(OptionHandler):
     def regist(self):
         
         try:
-            # --- 정각, 15분, 30분, 45분에 실행하도록 조정 
-            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 대기. {self.ticker_list}를 대상으로 15분 단위에 맞춰 실행.")
-            self.wait_until_next_15min()
+            # --- 정각에 실행하도록 조정 
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 대기. {self.ticker_list}를 대상으로 정각에 맞춰 실행.")
+            self.wait_until_next_noon()
             
             # --- 스케쥴러 등록
-            self.redis.save_msg_on_Q(f"{self.slack_post_prefix}. 백테스팅 실행.")
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 실행.")
             for model_path in self.model_path_list:
                 self.regist_scheduler(
                     ticker="KRW-BTC", 
@@ -84,10 +84,10 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
 
-    def wait_until_next_15min(self):
+    def wait_until_next_noon(self):
         
         now = datetime.datetime.now()
-        next_minute = (now.minute // 15 + 1) * 15
+        next_minute = (now.minute // 60 + 1) * 60
         if next_minute == 60:
             next_time = now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=1)
             
@@ -171,7 +171,6 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         )
         cv_ai_back_tester_s1_gen01_core.back_test_model(df, ticker, model_path, interval, interval_prev, is_by_prev, back_test_start_dt)
     
-    @try_again(num=10)
     def get_target_prediction_data(self, ticker):
         
         # 동시 호출로 인한 API 호출 제한 완화 
@@ -184,12 +183,22 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         
         collected_data_f_list = []
         for datetime_str in datetime_str_list:
-            cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core(self.log)
-            cv_auto_trader_s2_gen01_core.init_upbit_ticker(ticker)
-            collected_data_f = cv_auto_trader_s2_gen01_core.set_features(datetime_str)
-            
+            collected_data_f = self.get_collected_data_f(ticker, datetime_str)
             collected_data_f_list.append(collected_data_f)
+            
+            # 동시 호출로 인한 API 호출 제한 완화 
+            delay = random.uniform(0.1, 1.1)  
+            time.sleep(delay)
         
         df = pd.DataFrame(collected_data_f_list, columns=self.col_f)
         
         return df
+    
+    @try_again(num=10)
+    def get_collected_data_f(self, ticker, datetime_str):
+        
+        cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen01Core(self.log)
+        cv_auto_trader_s2_gen01_core.init_upbit_ticker(ticker)
+        collected_data_f = cv_auto_trader_s2_gen01_core.set_features(datetime_str)
+        return collected_data_f
+    

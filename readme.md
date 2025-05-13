@@ -38,19 +38,14 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 
 <pre>
 📦 proj_cv5
-├── 📂 _ascm                            # 소스 컨트롤 오토메이션 
-├── 📂 apps                             # 앱
-│   ├── 📂 scheduler                    # 스케쥴러
-│   │   ├── 📂 dao                      
-│   │   │   └──{dao}.py
-│   │   ├── 📂 core                     
+├── 📂 apps 
+│   ├── 📂 scheduler # 스케쥴러 앱
+│   │   ├── 📂 core
 │   │   │   └──{core}.py
-│   │   ├── 📂 service                  
+│   │   ├── 📂 service
 │   │   │   ├── {service}_{version}.py
 │   │   │   └── {service}_{version}.py
-│   ├── 📂 task_worker                  # 테스크 워커
-│   │   ├── 📂 dao
-│   │   │   └──{dao}.py
+│   ├── 📂 task_worker # 테스크 워커 앱
 │   │   ├── 📂 core
 │   │   │   └──{core}.py
 │   │   ├── 📂 service
@@ -58,15 +53,18 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 │   │   │   └── {service}_{version}.py
 ├── 📂 docker
 ├── 📂 docker-compose
-├── 📂 shares # 공용 파일
+├── 📂 shares # 공용 파일 (컨테이너 생성 시 주입 됨)
+│   ├── 📂 constance
 │   ├── 📂 config
+│   ├── 📂 dao
 │   ├── 📂 decorations
 │   ├── 📂 functions
+│   └── 📂 middlewares
 │   └── 📂 modules
-├── .gitignore                  # Git 제외 파일
+├── .gitignore            # Git 제외 파일
 ├── .git                        # Git 
-├── poetry.lock                 # 의존성 관리
-├── pyproject.toml              # 의존성 관리 
-└── readme.md                   # 프로젝트 개요
+├── poetry.lock         # 의존성 관리
+├── pyproject.toml   # 의존성 관리 
+└── [README.md](http://readme.md/)       # 프로젝트 개요
 </pre>
 ---
