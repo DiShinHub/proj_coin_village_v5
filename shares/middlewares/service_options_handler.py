@@ -1,5 +1,5 @@
 from shares.dao.runnable_services_dao import *
-from shares.functions.common_function import convert_eval_safe
+from shares.functions.common_function import convert_eval_safe, convert_json_str_safe
 
 class OptionHandler():
     
@@ -34,3 +34,4 @@ class OptionHandler():
         # --- 속성에 DB에서 조회한 서비스 옵션 값을 채워 넣음
         for service_option in service_options:
             setattr(self, service_option["option_key"], convert_eval_safe(service_option["option_val"]))
+            #setattr(self, service_option["option_key"], convert_json_str_safe(convert_eval_safe(service_option["option_val"])))

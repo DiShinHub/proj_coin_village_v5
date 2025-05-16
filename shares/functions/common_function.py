@@ -417,6 +417,14 @@ def convert_eval_safe(val):
     except (ValueError, SyntaxError):
         return val  # 그냥 문자열로 둠
 
+def convert_json_str_safe(val):
+    try:
+        # 문자열이지만 json으로 안전하게 파싱 가능한 경우만 변환
+        return json.loads(val)
+    
+    except (ValueError, SyntaxError):
+        return val  # 그냥 문자열로 둠
+
 def map_interval_to_interval_min(interval):
     
     # interval_min을 interval을 통해 조회 

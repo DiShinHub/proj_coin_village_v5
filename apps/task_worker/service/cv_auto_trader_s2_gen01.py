@@ -3,12 +3,12 @@ from shares.middlewares.service_orderbook_handler import OrderbookHandler
 from shares.modules.log import Log
 from shares.decorations.transaction_lock import *
 from shares.constance.upbit_constance import UpbitConst
+from shares.define.order_default import ORDER_INTENSITY_DEFAULT
 from shares.functions.common_function import find_target_dictionary
 
 from task_worker.core.cv_auto_trader_s2_gen01_core import CvAutoTraderS2Gen01Core
 
 import multiprocessing
-import signal
 import time
 import os
 import inspect
@@ -51,6 +51,9 @@ class CvAutoTraderS2Gen01(OrderbookHandler, OptionHandler):
         """
         def description : 코어 프로세스 실행
         """
+        
+        # --- 주문 강도 파싱
+        order_intensity = self.order_intensities.get(ticker, ORDER_INTENSITY_DEFAULT)
         
         # --- 주문 정보 추출
         order_intensity = find_target_dictionary("ticker", ticker, self.order_intensities) # 티커별 주문 강도

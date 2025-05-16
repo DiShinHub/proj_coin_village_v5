@@ -53,7 +53,7 @@ class TensorflowModule():
         model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(learning_rate=0.001), metrics=['accuracy'])
         
         # 모델 학습
-        model.fit(
+        history = model.fit(
             X, Y,
             epochs=epochs,                      # 전체 데이터셋을 몇 번 반복해서 학습할지
             batch_size=batch_size,              # 한 번에 학습에 사용할 데이터의 개수
@@ -62,7 +62,7 @@ class TensorflowModule():
             class_weight=class_weight,          # 가중치 
             callbacks=[self.early_stopping]     # 조기 종료 추가
         )
-        return model
+        return model, history
     
     def predict_by_lstm_model(self, model, X, time_steps):
         

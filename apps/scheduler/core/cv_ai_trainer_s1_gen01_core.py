@@ -76,10 +76,11 @@ class CvAiTrainerS1Gen01Core():
                 # 가중치 계산 (균등화 적용)
                 class_weight = self.sklearn_module.calculate_class_weight(Y)
                 
-                # # 역비례 가중치 적용
-                # class_weight[0] = class_weight[0] * 2
-                # class_weight[1] = class_weight[0] / 2
-                # class_weight[2] = class_weight[0] * 2
+                # 가중치로 인한 손실 보정 비율
+                loss_balance_ratio = 2
+                class_weight[0] = class_weight[0] - (class_weight[1] * loss_balance_ratio)/2
+                class_weight[1] = class_weight[1] * loss_balance_ratio 
+                class_weight[2] = class_weight[2] - (class_weight[1] * loss_balance_ratio)/2
                 
                 # # 가중치 지정 
                 # class_weight = {
@@ -91,7 +92,12 @@ class CvAiTrainerS1Gen01Core():
                 # raise
         
                 # 모델 생성
-                model = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps, self.batch_size, self.epochs, self.early_stop, class_weight)
+                model, history = self.tensorflow_module.train_by_lstm_model(X, Y, self.time_steps, self.batch_size, self.epochs, self.early_stop, class_weight)
+                
+                self.log.info(f"타겟 : {target}")
+                self.log.info(f"최종 훈련 정확도 : {history.history['accuracy'][-1]}")
+                self.log.info(f"최종 검증 정확도 : {history.history['val_accuracy'][-1]}")
+        
                 model.save(local_path, save_format="h5")
                 self.minio.upload_file(minio_path, local_path)
             

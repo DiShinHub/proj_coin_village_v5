@@ -75,7 +75,14 @@ class CvAutoTraderS2Gen01Core():
         self.order_percent_ir = self.order_intensity["order_percent_ir"]
         self.order_hurdle_iv = self.order_intensity["order_hurdle_iv"]
         self.order_hurdle_ir = self.order_intensity["order_hurdle_ir"]
-        self.sideways_hours_limit = self.order_intensity.get("sideways_hours_limit")
+        self.order_reset_hours_if_stable = self.order_intensity.get("order_reset_hours_if_stable")
+        
+        """
+        order_reset_hours_if_sc # stable_continues
+        order_reset_hours_if_stable_continues
+        order_reset_hours
+        order_reset_hours_isc # if stable continues 
+        """
         
         if self.order_percent_iv: self.order_percent_iv = float(self.order_percent_iv)
         else:  
@@ -93,9 +100,9 @@ class CvAutoTraderS2Gen01Core():
         else: 
             raise ValueError(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : Missing options required: self.order_hurdle_ir")
 
-        if self.sideways_hours_limit: self.sideways_hours_limit = float(self.sideways_hours_limit)
+        if self.order_reset_hours_if_stable: self.order_reset_hours_if_stable = float(self.order_reset_hours_if_stable)
         else: 
-            self.sideways_hours_limit = 24
+            self.order_reset_hours_if_stable = 24
         
     @block_when_lock(lock_key=UpbitConst.TRANSACTION_BLOCK_KEY)
     def set_order_standard(self):
@@ -145,9 +152,9 @@ class CvAutoTraderS2Gen01Core():
         # CASE 2: 매수 없이 상승세 감지      
         elif self.bollinger_state_crr in ([6]) and\
             self.bollinger_state_prev in ([5, 6]) and\
-            datetime.timedelta(hours=self.sideways_hours_limit) < (datetime.datetime.now()- self.order_last_dt):
+            datetime.timedelta(hours=self.order_reset_hours_if_stable) < (datetime.datetime.now()- self.order_last_dt):
             
-            self.reset_order(f"{self.slack_post_prefix} : {self.ticker}의 상승세를 감지하였으며 {self.sideways_hours_limit}시간 동안 거래를 감지하지 못하였습니다. 매매롤 초기화 합니다.")
+            self.reset_order(f"{self.slack_post_prefix} : {self.ticker}의 상승세를 감지하였으며 {self.order_reset_hours_if_stable}시간 동안 거래를 감지하지 못하였습니다. 매매롤 초기화 합니다.")
     
     @lock_transaction(lock_key=UpbitConst.TRANSACTION_BLOCK_KEY, hold=1)
     def pre_bbbb(self):

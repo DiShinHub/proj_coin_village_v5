@@ -1,0 +1,1 @@
+ORDER_INTENSITY_DEFAULT = {"ticker":"default", "order_percent_iv":1, "order_percent_ir":2, "order_hurdle_iv":1, "order_hurdle_ir":2, "order_reset_hours_if_stable":24}
