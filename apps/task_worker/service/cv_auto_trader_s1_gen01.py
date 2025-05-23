@@ -26,7 +26,7 @@ class CvAutoTraderS1Gen01(OptionHandler):
         # service attrs
         self.ticker_list = None
         self.ttl_orderbook = None
-        self.init_options(seq)
+        self.load_options(seq)
         
         # system attrs
         self.socket_url = "wss://api.upbit.com/websocket/v1"

@@ -4,11 +4,15 @@ from shares.modules.redis import *
 from shares.modules.slack import *
 from shares.modules.upbit import *
 from shares.modules.binance import *
+from shares.modules.minio import *
+from shares.modules.candle_pattern import *
 
 from shares.dao.trade_result_dao import TradeResultDao
 from shares.dao.upbit_transaction_dao import UpbitTransactionDao
 from shares.functions.common_function import *
 
+from collections import defaultdict
+        
 import pandas as pd
 
 import os
@@ -26,6 +30,8 @@ class Test():
         self.slack = Slack(channel="#coinvillage")
         self.upbit = Upbit()
         self.binance = Binance()
+        self.minio = MinioModule()
+        self.candle_pattern = CandlePatterns()
         
         self.trade_result_dao = TradeResultDao()
         self.upbit_transaction_dao = UpbitTransactionDao()
@@ -88,15 +94,18 @@ class Test():
         
         self.log.info(f"Waiting {int(wait_seconds)} seconds until {next_time.time()} to start.")
         
-        time.sleep(wait_seconds)           
-        
+        time.sleep(wait_seconds)    
+            
     def get_dataframe(self, ticker):
         
         # --- 데이터 셋팅
         now_date = str(datetime.datetime.now())[0:19]
-        n_days_ago = str(datetime.datetime.now() - datetime.timedelta(days=90))[0:19]   
+        n_days_ago = str(datetime.datetime.now() - datetime.timedelta(days=730))[0:19]   
         self.year_list = get_years_between_str(n_days_ago, now_date)  # 대상연도
         self.splited_year_dict = split_date_range_by_year(n_days_ago, now_date) 
+        
+        # --- 연단위 테이블 생성 (있으면 pass)
+        self.upbit_transaction_dao.create_yearly_table(self.year_list)
     
         # --- 데이터 조회
         upbit_transactions_list = []
@@ -111,11 +120,130 @@ class Test():
             upbit_transactions_list += upbit_transactions
         
         # --- 데이터프레임으로 변환
-        df = pd.DataFrame(upbit_transactions_list)
+        df = pd.DataFrame(upbit_transactions_list)     
         
-        return df              
+        df['tick_datetime_'] = df['tick_datetime_'].dt.tz_localize(None)
+        return df
     
     def run(self):
+        
+        
+        local_path = "./my_data.xlsx"
+        minio_path = "/datasets/2025/05/21/2025-05-21 10:30:00.xlsx"
+        
+        df = self.get_dataframe("KRW-BTC")
+        
+        # Excel 파일로 저장
+        df.to_excel(local_path, index=False)  # 현재 작업 디렉토리에 저장
+
+        self.minio.upload_file(minio_path, local_path)
+        
+        os.remove(local_path)
+        
+        return 
+        
+        # 전체 테스트
+        
+        self.datetime_list = generate_datetimes_by_min(terms=30, interval=5, n_days_ago=7) # 수집 구간 datetime 리스트 생성
+        
+        self.log.info(f' start : {datetime.datetime.now()}')
+        
+        for date_ in self.datetime_list:
+        
+            self.upbit.set_ticker("KRW-BTC")
+            df_ohlcv = self.upbit.get_df_ohlcv(interval="minute5", date=date_, count=50)
+            
+            self.candle_pattern.set_df(df_ohlcv)
+            get_cdl2crows = self.candle_pattern.get_cdl2crows()
+            cdl2crows_key = get_cdl2crows.index[-1]
+            cdl2crows_val = get_cdl2crows.iloc[-1]
+            
+            # 2025-03-25 20:50:00
+            if cdl2crows_val != 0:
+                self.log.info(f'key : {cdl2crows_key}')
+                self.log.info(f'val : {cdl2crows_val}')
+                
+            time.sleep(0.1)
+        self.log.info(f' end : {datetime.datetime.now()}')
+        
+        # for idx, row in get_cdl2crows['signal'].iterrows():
+        #     self.log.info(f'idx : {idx}')
+        #     self.log.info(f'row : {row}')
+        #     self.log.info(f'row : {type(row)}')
+            # if row['some_column'] == 1:
+            #     print(f"Index {idx}에서 값이 1인 행 발견:", row)
+            #     # 필요한 작업 수행
+        
+        # last_row = get_cdl2crows.iloc[-1]
+        # self.log.info(f'last_row : {last_row}')
+        # # self.log.info(f'candle_pattern_all : {candle_pattern_all}')
+        
+        return 
+        # res = self.upbit_transaction_dao.create_upbit_transaction_table(table_name="dataset_upbit_transaction_2023")
+        
+        query = """
+            SELECT
+                data_row->>'tick_datetime' AS tick_datetime,
+                data_row->>'timestamp' AS timestamp,
+                data_row->>'weekday' AS weekday,
+                data_row->>'OPEN' AS OPEN,
+                data_row->>'HIGH' AS HIGH,
+                data_row->>'LOW' AS LOW,
+                data_row->>'CLOSE' AS CLOSE,
+                data_row->>'VOLUME' AS VOLUME,
+                data_row->>'VOLUME_MA5' AS VOLUME_MA5,
+                data_row->>'VOLUME_MA20' AS VOLUME_MA20,
+                data_row->>'VOLUME_RATIO' AS VOLUME_RATIO,
+                data_row->>'OBV' AS OBV,
+                data_row->>'VWAP' AS VWAP,
+                data_row->>'VOLUME_VOLATILITY' AS VOLUME_VOLATILITY,
+                data_row->>'VOLUME_SPIKE' AS VOLUME_SPIKE,
+                data_row->>'RSI' AS RSI,
+                data_row->>'MACD' AS MACD,
+                data_row->>'MACD_SIGNAL' AS MACD_SIGNAL,
+                data_row->>'BOLLINGER_PARTITION' AS BOLLINGER_PARTITION,
+                data_row->>'CLOSE_LIST' AS CLOSE_LIST
+            FROM
+                dataset_upbit_transaction_feature_2023
+            WHERE ticker = 'KRW-BTC'
+            ORDER BY tick_datetime desc
+        """
+        res_f = self.postgres.read_all(query)
+        self.log.info(f'len res_f : {len(res_f)}')
+        
+        query = """
+            SELECT
+            EXTRACT(EPOCH FROM tick_datetime)::bigint AS timestamp,
+            data_row->'by_prev'->>'price_after_15min' AS price_after_15min,
+            data_row->'by_prev'->>'price_after_30min' AS price_after_30min,
+            data_row->'by_prev'->>'price_after_1hour' AS price_after_1hour,
+            data_row->'by_prev'->>'price_after_4hour' AS price_after_4hour,
+            data_row->'by_prev'->>'price_after_12hour' AS price_after_12hour,
+            data_row->'by_prev'->>'price_after_1day' AS price_after_1day,
+            data_row->'by_prev'->>'price_after_2day' AS price_after_2day,
+            data_row->'by_prev'->>'price_after_3day' AS price_after_3day,
+            data_row->'by_prev'->>'price_after_4day' AS price_after_4day,
+            data_row->'by_prev'->>'price_after_5day' AS price_after_5day,
+            data_row->'by_prev'->>'price_after_6day' AS price_after_6day
+            FROM
+            dataset_upbit_transaction_target_2023
+            WHERE ticker = 'KRW-BTC'
+            ORDER BY tick_datetime DESC;
+        """
+        res_t = self.postgres.read_all(query)
+        self.log.info(f'len res_t : {len(res_t)}')
+        
+        merged_list = []
+        for val_t in res_t:
+            
+            merged_dict = {}
+            for val_f in res_f:
+                if float(val_f['timestamp']) == float(val_t['timestamp']):
+                    merged_dict = {**val_f, **val_t}
+                    merged_list.append(merged_dict)
+        
+        self.log.info(f'len merged_list : {len(merged_list)}')
+        return 
         
         df = self.get_dataframe("KRW-BTC")
         data = df.copy()

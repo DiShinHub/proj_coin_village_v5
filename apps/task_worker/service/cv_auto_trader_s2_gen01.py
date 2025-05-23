@@ -32,7 +32,7 @@ class CvAutoTraderS2Gen01(OrderbookHandler, OptionHandler):
         # service attrs
         self.order_intensities = None
         self.order_max = None
-        self.init_options(seq)
+        self.load_options(seq)
         
         self.runnable_services_seq = seq
         

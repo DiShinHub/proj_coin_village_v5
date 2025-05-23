@@ -8,6 +8,7 @@ import pyupbit
 
 from datetime import datetime, timedelta
 import math
+import numpy as np
 
 import inspect
 
@@ -368,49 +369,56 @@ class Upbit():
         }
         return result_dict
     
-    def get_multiple_infos(self, interval="day", date=None):
-        """
-        def description : 
-        
-        Parameters
-        ----------
-        interval : 특정 인터벌
-        date : 타겟 날짜
-
-        Returns:
-            result_list: 최대 165개의 인터벌별 분석 결과 (dict 리스트 형태)
-        """
+    def get_df_ohlcv(self, interval="day", date=None, count=100):
         
         if date:
-            df = pyupbit.get_ohlcv(self.ticker, interval=interval, to=self.adjust_date(date, interval), count=200)
+            df = pyupbit.get_ohlcv(self.ticker, interval=interval, to=self.adjust_date(date, interval), count=count)
             
         else:
-            df = pyupbit.get_ohlcv(self.ticker, interval=interval, count=200)
-
-        if df is None or len(df) < 50:
+            df = pyupbit.get_ohlcv(self.ticker, interval=interval, count=count)
+            
+        return df 
+    
+    def get_technical_indicator(self, df):
+        
+        if df is None or len(df) < 35:
             raise ValueError("Not enough data")
 
-        # 지표 계산
-        df["volume_ma5"] = df["volume"].rolling(window=5).mean()
-        df["volume_ma20"] = df["volume"].rolling(window=20).mean()
+        # -- 거래량 이동 평균 (5분, 20분)
+        df["volume_ma5"] = df["volume"].rolling(window=5).mean()  # 5분 이동 평균
+        df["volume_ma20"] = df["volume"].rolling(window=20).mean()  # 20분 이동 평균
+
+        # -- 거래량 비율 (VR)
         df["volume_ratio"] = df["volume"] / df["volume_ma20"]
+
+        # -- On-Balance Volume (OBV)
         df["obv"] = (df["close"].diff() > 0).astype(int) * df["volume"]
         df["obv"] = df["obv"].cumsum()
+
+        # -- 볼륨 가중 평균 가격 (VWAP)
         df["cum_volume"] = df["volume"].cumsum()
         df["cum_vwap"] = (df["volume"] * (df["high"] + df["low"] + df["close"]) / 3).cumsum()
         df["vwap"] = df["cum_vwap"] / df["cum_volume"]
+
+        # -- 거래량 변동성 (표준편차)
         df["volume_volatility"] = df["volume"].rolling(window=10).std()
+
+        # -- 거래량 스파이크 탐지 (평균 대비 2배 이상)
         df["volume_spike"] = df["volume"] > (df["volume_ma20"] * 2)
 
+        # -- RSI 계산 (14일 기준)
         delta = df["close"].diff()
-        gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+
         rs = gain / loss
         df["rsi"] = 100 - (100 / (1 + rs))
 
+        # -- MACD 계산 (12일, 26일 EMA, 9일 Signal Line)
         df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
         df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
 
+        # -- Bollinger Bands (20일 기준, 표준편차 2배)
         df["band_mid"] = df["close"].rolling(window=20).mean()
         df["stddev"] = df["close"].rolling(window=20).std()
         df["band_upper"] = df["band_mid"] + (df["stddev"] * 2)
@@ -430,38 +438,184 @@ class Upbit():
             elif row["close"] < row["band_lower"]:
                 return 1
             else:
-                return 0
+                return 0 # error
 
         df["bollinger_partition"] = df.apply(bollinger_band_partition, axis=1)
+        
+        # -- ATR 
+        df["tr"] = df[["high", "low", "close"]].apply(
+            lambda x: max(x["high"] - x["low"], abs(x["high"] - x["close"]), abs(x["low"] - x["close"])), axis=1
+        )
+        df["atr"] = df["tr"].rolling(window=14).mean()
+        
+        # -- CCI
+        tp = (df["high"] + df["low"] + df["close"]) / 3
+        ma = tp.rolling(window=20).mean()
+        md = tp.rolling(window=20).apply(lambda x: np.mean(np.abs(x - np.mean(x))))
+        df["cci"] = (tp - ma) / (0.015 * md)
+        
+        # -- Stochastic Oscillator
+        low14 = df["low"].rolling(window=14).min()
+        high14 = df["high"].rolling(window=14).max()
+        df["stochastic_k"] = 100 * (df["close"] - low14) / (high14 - low14)
+        df["stochastic_d"] = df["stochastic_k"].rolling(window=3).mean()
+        
+        # -- ROC 
+        df["roc"] = df["close"].pct_change(periods=12) * 100
+        
+        # -- momentum
+        df["momentum"] = df["close"] - df["close"].shift(10)
+        
+        # -- EMA 크로스 여부
+        ema12 = df["close"].ewm(span=12, adjust=False).mean()
+        ema26 = df["close"].ewm(span=26, adjust=False).mean()
+        df["ema_cross_up"] = (ema12 > ema26).astype(int)
+        
+        # 마지막 값을 딕셔너리로 변환
+        result_dict = {
+            "open": float(df["open"].iloc[-1]),
+            "high": float(df["high"].iloc[-1]),
+            "low": float(df["low"].iloc[-1]),
+            "close": float(df["close"].iloc[-1]),
+            "volume": float(df["volume"].iloc[-1]),
+            "volume_ma5": float(df["volume_ma5"].iloc[-1]),
+            "volume_ma20": float(df["volume_ma20"].iloc[-1]),
+            "volume_ratio": float(df["volume_ratio"].iloc[-1]),
+            "obv": float(df["obv"].iloc[-1]),
+            "vwap": float(df["vwap"].iloc[-1]),
+            "volume_volatility": float(df["volume_volatility"].iloc[-1]),
+            "volume_spike": float(df["volume_spike"].iloc[-1]),
+            "rsi": float(df["rsi"].iloc[-1]),
+            "macd": float(df["macd"].iloc[-1]),
+            "macd_signal": float(df["macd_signal"].iloc[-1]),
+            "bollinger_partition": int(df["bollinger_partition"].iloc[-1]),
+            "bollinger_partition_prev": int(df["bollinger_partition"].iloc[-2]),
+            "atr": float(df["atr"].iloc[-1]),
+            "cci": float(df["cci"].iloc[-1]),
+            "stochastic_k": float(df["stochastic_k"].iloc[-1]),
+            "stochastic_d": float(df["stochastic_d"].iloc[-1]),
+            "roc": float(df["roc"].iloc[-1]),
+            "momentum": float(df["momentum"].iloc[-1]),
+            "ema_cross_up": int(df["ema_cross_up"].iloc[-1])
+        }
+        return result_dict
+    
+    def get_technical_indicators(self, df):
+        
+        if df is None or len(df) < 35:
+            raise ValueError("Not enough data")
 
-        result_list = []
-        for i in range(35, len(df)):
-            close_list_df = df["close"].iloc[i - 10 + 1: i + 1]
-            if len(close_list_df) < 10:
-                continue
+        # -- 거래량 이동 평균 (5분, 20분)
+        df["volume_ma5"] = df["volume"].rolling(window=5).mean()  # 5분 이동 평균
+        df["volume_ma20"] = df["volume"].rolling(window=20).mean()  # 20분 이동 평균
 
-            result_dict = {
-                "OPEN": float(df["open"].iloc[i]),
-                "HIGH": float(df["high"].iloc[i]),
-                "LOW": float(df["low"].iloc[i]),
-                "CLOSE": float(df["close"].iloc[i]),
-                "VOLUME": float(df["volume"].iloc[i]),
-                "VOLUME_MA5": float(df["volume_ma5"].iloc[i]),
-                "VOLUME_MA20": float(df["volume_ma20"].iloc[i]),
-                "VOLUME_RATIO": float(df["volume_ratio"].iloc[i]),
-                "OBV": float(df["obv"].iloc[i]),
-                "VWAP": float(df["vwap"].iloc[i]),
-                "VOLUME_VOLATILITY": float(df["volume_volatility"].iloc[i]),
-                "VOLUME_SPIKE": float(df["volume_spike"].iloc[i]),
-                "RSI": float(df["rsi"].iloc[i]),
-                "MACD": float(df["macd"].iloc[i]),
-                "MACD_SIGNAL": float(df["macd_signal"].iloc[i]),
-                "BOLLINGER_PARTITION": int(df["bollinger_partition"].iloc[i]),
-                "CLOSE_LIST": [float(c) for c in close_list_df],
-            }
-            result_list.append(result_dict)
+        # -- 거래량 비율 (VR)
+        df["volume_ratio"] = df["volume"] / df["volume_ma20"]
 
-        return result_list
+        # -- On-Balance Volume (OBV)
+        df["obv"] = (df["close"].diff() > 0).astype(int) * df["volume"]
+        df["obv"] = df["obv"].cumsum()
+
+        # -- 볼륨 가중 평균 가격 (VWAP)
+        df["cum_volume"] = df["volume"].cumsum()
+        df["cum_vwap"] = (df["volume"] * (df["high"] + df["low"] + df["close"]) / 3).cumsum()
+        df["vwap"] = df["cum_vwap"] / df["cum_volume"]
+
+        # -- 거래량 변동성 (표준편차)
+        df["volume_volatility"] = df["volume"].rolling(window=10).std()
+
+        # -- 거래량 스파이크 탐지 (평균 대비 2배 이상)
+        df["volume_spike"] = df["volume"] > (df["volume_ma20"] * 2)
+
+        # -- RSI 계산 (14일 기준)
+        delta = df["close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+
+        rs = gain / loss
+        df["rsi"] = 100 - (100 / (1 + rs))
+
+        # -- MACD 계산 (12일, 26일 EMA, 9일 Signal Line)
+        df["macd"] = df["close"].ewm(span=12, adjust=False).mean() - df["close"].ewm(span=26, adjust=False).mean()
+        df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
+
+        # -- Bollinger Bands (20일 기준, 표준편차 2배)
+        df["band_mid"] = df["close"].rolling(window=20).mean()
+        df["stddev"] = df["close"].rolling(window=20).std()
+        df["band_upper"] = df["band_mid"] + (df["stddev"] * 2)
+        df["band_lower"] = df["band_mid"] - (df["stddev"] * 2)
+
+        def bollinger_band_partition(row):
+            if row["close"] >= row["band_upper"]:
+                return 6
+            elif row["close"] >= row["band_upper"] - row["stddev"]:
+                return 5
+            elif row["close"] >= row["band_mid"]:
+                return 4
+            elif row["close"] >= row["band_mid"] - row["stddev"]:
+                return 3
+            elif row["close"] >= row["band_lower"]:
+                return 2
+            elif row["close"] < row["band_lower"]:
+                return 1
+            else:
+                return 0 # error
+
+        df["bollinger_partition"] = df.apply(bollinger_band_partition, axis=1)
+        
+        # -- ATR 
+        df["tr"] = df[["high", "low", "close"]].apply(
+            lambda x: max(x["high"] - x["low"], abs(x["high"] - x["close"]), abs(x["low"] - x["close"])), axis=1
+        )
+        df["atr"] = df["tr"].rolling(window=14).mean()
+        
+        # -- CCI
+        tp = (df["high"] + df["low"] + df["close"]) / 3
+        ma = tp.rolling(window=20).mean()
+        md = tp.rolling(window=20).apply(lambda x: np.mean(np.abs(x - np.mean(x))))
+        df["cci"] = (tp - ma) / (0.015 * md)
+        
+        # -- Stochastic Oscillator
+        low14 = df["low"].rolling(window=14).min()
+        high14 = df["high"].rolling(window=14).max()
+        df["stochastic_k"] = 100 * (df["close"] - low14) / (high14 - low14)
+        df["stochastic_d"] = df["stochastic_k"].rolling(window=3).mean()
+        
+        # -- ROC 
+        df["roc"] = df["close"].pct_change(periods=12) * 100
+        
+        # -- EMA 크로스 여부
+        ema12 = df["close"].ewm(span=12, adjust=False).mean()
+        ema26 = df["close"].ewm(span=26, adjust=False).mean()
+        df["ema_cross_up"] = (ema12 > ema26).astype(int)
+        
+        # 마지막 값을 딕셔너리로 변환
+        result_dict = {
+            "open": float(df["open"]),
+            "high": float(df["high"]),
+            "low": float(df["low"]),
+            "close": float(df["close"]),
+            "volume": float(df["volume"]),
+            "volume_ma5": float(df["volume_ma5"]),
+            "volume_ma20": float(df["volume_ma20"]),
+            "volume_ratio": float(df["volume_ratio"]),
+            "obv": float(df["obv"]),
+            "vwap": float(df["vwap"]),
+            "volume_volatility": float(df["volume_volatility"]),
+            "volume_spike": float(df["volume_spike"]),
+            "rsi": float(df["rsi"]),
+            "macd": float(df["macd"]),
+            "macd_signal": float(df["macd_signal"]),
+            "bollinger_partition": int(df["bollinger_partition"]),
+            "atr": float(df["atr"]),
+            "cci": float(df["cci"]),
+            "stochastic_k": float(df["stochastic_k"]),
+            "stochastic_d": float(df["stochastic_d"]),
+            "roc": float(df["roc"]),
+            "momentum": float(df["momentum"]),
+            "ema_cross_up": int(df["ema_cross_up"])
+        }
+        return result_dict
             
     @cache_data(ttl=1)
     #@reuse_data(required_keys=['date', 'days', 'interval'])

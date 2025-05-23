@@ -54,7 +54,7 @@ class CvAiBackTesterS1Gen01(OptionHandler):
         self.model_path_list = None
         self.col_f = None
         self.time_steps = None
-        self.init_options(seq)
+        self.load_options(seq)
         
     """
     regist scheduler

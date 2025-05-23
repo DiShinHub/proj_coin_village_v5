@@ -53,7 +53,7 @@ class CvAiTrainerS1Gen01(OptionHandler):
         self.col_f = None
         self.col_t = None
          
-        self.init_options(seq)
+        self.load_options(seq)
         self.seq = seq
         self.model_path_list = []
         

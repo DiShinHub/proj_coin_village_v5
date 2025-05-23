@@ -34,6 +34,11 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 </pre>
 ---
 
+### 패키지 추가
+./pyproject.toml 수정
+./poetry lock 
+./_ascm\bat\cv-docker-compose-build.bat
+
 ### **폴더 트리**
 
 <pre>

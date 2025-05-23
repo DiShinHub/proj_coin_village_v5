@@ -35,7 +35,7 @@ class CvDataCollectorS1Gen01(OptionHandler):
         self.dataset_generate_term = None
         self.scheduler_start_hour = None
         self.scheduler_start_min = None
-        self.init_options(seq)
+        self.load_options(seq)
         
         # system attrs
         self.ticker = ""

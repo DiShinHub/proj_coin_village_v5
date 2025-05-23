@@ -29,7 +29,7 @@ class CvAutoTraderS3Gen01(OrderbookHandler, OptionHandler):
         # service attrs
         self.order_intensities = None
         self.order_max = None
-        self.init_options(seq)
+        self.load_options(seq)
         
         # set OrderbookHandler's key
         super().__init__(orderbook_key=UpbitConst.ORDERBOOK_QUEUE_KEY)

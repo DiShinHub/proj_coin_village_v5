@@ -55,9 +55,13 @@ class CvAiBackTesterS1Gen01Core():
             interval_min = map_interval_to_interval_min(interval)
             interval_prev_min = map_interval_to_interval_min(interval_prev)
             
+            self.log.info(f'model load start : {datetime.datetime.now()}')
+            
             # --- 모델 셋팅 
             self.minio.download_file(model_path, local_path)
             model = load_model(local_path)    
+            
+            self.log.info(f'model load end : {datetime.datetime.now()}')
             
             # --- 데이터 전처리
             data = self.pre_processing_data(df)
@@ -65,8 +69,12 @@ class CvAiBackTesterS1Gen01Core():
             # --- 예측 전 현재가 
             current_price_before = self.get_current_price()
             
+            self.log.info(f'model predict start : {datetime.datetime.now()}')
+            
             # --- 예측
             up_down_side_predicted = self.execute_prediction(model, data)
+            
+            self.log.info(f'model predict end : {datetime.datetime.now()}')
             
             # --- 모델 파기 후 대기
             del model 
@@ -159,19 +167,23 @@ class CvAiBackTesterS1Gen01Core():
     
     def decide_up_down_side(self, interval_min, current_price, target_price):
         
-        if interval_min < 60: 
-            percentage_standard = 0.5
-        elif interval_min < 60 * 4: 
-            percentage_standard = 1
-        elif interval_min < 60 * 24: 
-            percentage_standard = 2
+        threshold=None
+        if interval_min <= 60: 
+            threshold = 0.5
+        elif interval_min <= 60 * 4: 
+            threshold = 1
+        elif interval_min <= 60 * 24: 
+            threshold = 2
+            
+        if threshold == None:
+            raise f"no threshold for {interval_min}, {current_price}, {target_price}"
 
         percentage_change = ((current_price - target_price) / target_price) * 100
         
         real = None
-        if percentage_change > percentage_standard:
+        if percentage_change > threshold:
             real = 2
-        elif percentage_change < -percentage_standard:
+        elif percentage_change < -threshold:
             real  = 0
         else:
             real  = 1

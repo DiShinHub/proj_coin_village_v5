@@ -3,9 +3,9 @@ from shares.functions.common_function import convert_eval_safe, convert_json_str
 
 class OptionHandler():
     
-    def init_options(self, seq):
+    def load_options(self, seq):
         """
-        def description : 옵션 이닛
+        def description : 옵션 fhem
         
         - 클래스의 속성을 DB를 토대로 자동으로 채움
         

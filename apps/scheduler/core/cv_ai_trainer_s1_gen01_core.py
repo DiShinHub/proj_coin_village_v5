@@ -77,7 +77,7 @@ class CvAiTrainerS1Gen01Core():
                 class_weight = self.sklearn_module.calculate_class_weight(Y)
                 
                 # 가중치로 인한 손실 보정 비율
-                loss_balance_ratio = 2
+                loss_balance_ratio = 8
                 class_weight[0] = class_weight[0] - (class_weight[1] * loss_balance_ratio)/2
                 class_weight[1] = class_weight[1] * loss_balance_ratio 
                 class_weight[2] = class_weight[2] - (class_weight[1] * loss_balance_ratio)/2

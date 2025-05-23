@@ -104,19 +104,19 @@ class CvDataCollectorS1Gen01Core():
                 if future_price:
                     if isinstance(future_price, float) or isinstance(future_price, int): 
 
-                        percentage_standard = None
+                        threshold = None
                         if "min" in key: 
-                            percentage_standard = 0.5
+                            threshold = 0.5
                         elif "hour" in key: 
-                            percentage_standard = 1
+                            threshold = 1
                         elif "day" in key: 
-                            percentage_standard = 2
+                            threshold = 2
 
                         percentage_change = ((future_price - target_price) / target_price) * 100
-                        if percentage_change > percentage_standard:
+                        if percentage_change > threshold:
                             res[f"change_{key}"] = 2
 
-                        elif percentage_change < -percentage_standard:
+                        elif percentage_change < -threshold:
                             res[f"change_{key}"]  = 0
 
                         else:

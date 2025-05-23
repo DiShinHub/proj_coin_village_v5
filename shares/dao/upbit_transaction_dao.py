@@ -33,13 +33,17 @@ class UpbitTransactionDao():
 
         """
         res = self.postgres.execute_query_with_commit(query)
+        return res
+    
+    def create_index(self, index_cols, table_name):
         
-        query = f"""
-            CREATE INDEX ix_{table_name}_ticker ON public.{table_name} (ticker);
-            CREATE INDEX ix_{table_name}_tick_datetime ON public.{table_name} (tick_datetime);
-        """
-        self.postgres.execute_query_with_commit(query)
-        
+        query = ""
+        for index_col in index_cols:
+            query += f"""
+                CREATE INDEX ix_{table_name}_{index_col} ON public.{table_name} ({index_col});
+            """
+            
+        res = self.postgres.execute_query_with_commit(query)
         return res
         
     def get_upbit_transaction_with_tick_datetime(self, table_name, tick_datetime):
@@ -78,90 +82,108 @@ class UpbitTransactionDao():
         
         return self.postgres.read_all(query) 
     
-    def get_upbit_transactions_between(self, table_name_f, table_name_t, ticker, start, end):
+    def get_upbit_transactions_between(self, table_name, ticker, start, end):
         
         query = f"""
             SELECT
-            f.seq AS feature_seq,
-            f.ticker,
-            f.tick_datetime AS "tick_datetime_",
-            f.data_row->>'tick_datetime' AS "tick_datetime",
-  	        f.data_row->>'timestamp' AS timestamp,
-            f.data_row->>'weekday' AS "weekday",
-            f.data_row->>'OPEN' AS "OPEN",
-            f.data_row->>'HIGH' AS "HIGH",
-            f.data_row->>'LOW' AS "LOW",
-            f.data_row->>'CLOSE' AS "CLOSE",
-            f.data_row->>'VOLUME' AS "VOLUME",
-            f.data_row->>'VOLUME_MA5' AS "VOLUME_MA5",
-            f.data_row->>'VOLUME_MA20' AS "VOLUME_MA20",
-            f.data_row->>'VOLUME_RATIO' AS "VOLUME_RATIO",
-            f.data_row->>'OBV' AS "OBV",
-            f.data_row->>'VWAP' AS "VWAP",
-            f.data_row->>'VOLUME_VOLATILITY' AS "VOLUME_VOLATILITY",
-            f.data_row->>'VOLUME_SPIKE' AS "VOLUME_SPIKE",
-            f.data_row->>'RSI' AS "RSI",
-            f.data_row->>'MACD' AS "MACD",
-            f.data_row->>'MACD_SIGNAL' AS "MACD_SIGNAL",
-            f.data_row->>'BOLLINGER_PARTITION' AS "BOLLINGER_PARTITION",
-            f.data_row->>'CLOSE_LIST' AS "CLOSE_LIST",
-
-            t.data_row->'by_prev'->>'price_after_15min' AS "by_prev_price_after_15min",
-            t.data_row->'by_prev'->>'price_after_30min' AS "by_prev_price_after_30min",
-            t.data_row->'by_prev'->>'price_after_1hour' AS "by_prev_price_after_1hour",
-            t.data_row->'by_prev'->>'price_after_4hour' AS "by_prev_price_after_4hour",
-            t.data_row->'by_prev'->>'price_after_12hour' AS "by_prev_price_after_12hour",
-            t.data_row->'by_prev'->>'price_after_1day' AS "by_prev_price_after_1day",
-            t.data_row->'by_prev'->>'price_after_2day' AS "by_prev_price_after_2day",
-            t.data_row->'by_prev'->>'price_after_3day' AS "by_prev_price_after_3day",
-            t.data_row->'by_prev'->>'price_after_4day' AS "by_prev_price_after_4day",
-            t.data_row->'by_prev'->>'price_after_5day' AS "by_prev_price_after_5day",
-            t.data_row->'by_prev'->>'price_after_6day' AS "by_prev_price_after_6day",
-            t.data_row->'by_prev'->>'change_after_15min' AS "by_prev_change_after_15min",
-            t.data_row->'by_prev'->>'change_after_30min' AS "by_prev_change_after_30min",
-            t.data_row->'by_prev'->>'change_after_1hour' AS "by_prev_change_after_1hour",
-            t.data_row->'by_prev'->>'change_after_4hour' AS "by_prev_change_after_4hour",
-            t.data_row->'by_prev'->>'change_after_12hour' AS "by_prev_change_after_12hour",
-            t.data_row->'by_prev'->>'change_after_1day' AS "by_prev_change_after_1day",
-            t.data_row->'by_prev'->>'change_after_2day' AS "by_prev_change_after_2day",
-            t.data_row->'by_prev'->>'change_after_3day' AS "by_prev_change_after_3day",
-            t.data_row->'by_prev'->>'change_after_4day' AS "by_prev_change_after_4day",
-            t.data_row->'by_prev'->>'change_after_5day' AS "by_prev_change_after_5day",
-            t.data_row->'by_prev'->>'change_after_6day' AS "by_prev_change_after_6day",
-
-            t.data_row->'by_ontime'->>'price_after_15min' AS "by_ontime_price_after_15min",
-            t.data_row->'by_ontime'->>'price_after_30min' AS "by_ontime_price_after_30min",
-            t.data_row->'by_ontime'->>'price_after_1hour' AS "by_ontime_price_after_1hour",
-            t.data_row->'by_ontime'->>'price_after_4hour' AS "by_ontime_price_after_4hour",
-            t.data_row->'by_ontime'->>'price_after_12hour' AS "by_ontime_price_after_12hour",
-            t.data_row->'by_ontime'->>'price_after_1day' AS "by_ontime_price_after_1day",
-            t.data_row->'by_ontime'->>'price_after_2day' AS "by_ontime_price_after_2day",
-            t.data_row->'by_ontime'->>'price_after_3day' AS "by_ontime_price_after_3day",
-            t.data_row->'by_ontime'->>'price_after_4day' AS "by_ontime_price_after_4day",
-            t.data_row->'by_ontime'->>'price_after_5day' AS "by_ontime_price_after_5day",
-            t.data_row->'by_ontime'->>'price_after_6day' AS "by_ontime_price_after_6day",
-            t.data_row->'by_ontime'->>'change_after_15min' AS "by_ontime_change_after_15min",
-            t.data_row->'by_ontime'->>'change_after_30min' AS "by_ontime_change_after_30min",
-            t.data_row->'by_ontime'->>'change_after_1hour' AS "by_ontime_change_after_1hour",
-            t.data_row->'by_ontime'->>'change_after_4hour' AS "by_ontime_change_after_4hour",
-            t.data_row->'by_ontime'->>'change_after_12hour' AS "by_ontime_change_after_12hour",
-            t.data_row->'by_ontime'->>'change_after_1day' AS "by_ontime_change_after_1day",
-            t.data_row->'by_ontime'->>'change_after_2day' AS "by_ontime_change_after_2day",
-            t.data_row->'by_ontime'->>'change_after_3day' AS "by_ontime_change_after_3day",
-            t.data_row->'by_ontime'->>'change_after_4day' AS "by_ontime_change_after_4day",
-            t.data_row->'by_ontime'->>'change_after_5day' AS "by_ontime_change_after_5day",
-            t.data_row->'by_ontime'->>'change_after_6day' AS "by_ontime_change_after_6day"
-
+                seq,
+                ticker,
+                tick_datetime as tick_datetime,
+                data_row->>'timestamp' as timestamp,
+                data_row->>'weekday' as weekday,
+                data_row->>'open' as open,
+                data_row->>'high' as high,
+                data_row->>'low' as low,
+                data_row->>'close' as close,
+                data_row->>'volume' as volume,
+                data_row->>'volume_ma5' as volume_ma5,
+                data_row->>'volume_ma20' as volume_ma20,
+                data_row->>'volume_ratio' as volume_ratio,
+                data_row->>'obv' as obv,
+                data_row->>'vwap'  as vwap,
+                data_row->>'volume_volatility' as volume_volatility,
+                data_row->>'volume_spike' as volume_spike,
+                data_row->>'rsi' as rsi,
+                data_row->>'macd' as macd,
+                data_row->>'macd_signal' as macd_signal,
+                data_row->>'bollinger_partition' as bollinger_partition,
+                data_row->>'bollinger_partition_prev' as bollinger_partition_prev,
+                data_row->>'atr' as atr,
+                data_row->>'cci' as cci,
+                data_row->>'stochastic_k' as stochastic_k,
+                data_row->>'stochastic_d' as stochastic_d,
+                data_row->>'roc' as roc,
+                data_row->>'momentum' as momentum,
+                data_row->>'ema_cross_up' as ema_cross_up,
+                data_row->>'cdl2crows' as cdl2crows,
+                data_row->>'cdl3blackcrows' as cdl3blackcrows,
+                data_row->>'cdl3inside' as cdl3inside,
+                data_row->>'cdl3linestrike' as cdl3linestrike,
+                data_row->>'cdl3outside' as cdl3outside,
+                data_row->>'cdl3starsinsouth' as cdl3starsinsouth,
+                data_row->>'cdl3whitesoldiers' as cdl3whitesoldiers,
+                data_row->>'cdlabandonedbaby' as cdlabandonedbaby,
+                data_row->>'cdladvanceblock' as cdladvanceblock,
+                data_row->>'cdlbelthold' as cdlbelthold,
+                data_row->>'cdlbreakaway' as cdlbreakaway,
+                data_row->>'cdlclosingmarubozu' as cdlclosingmarubozu,
+                data_row->>'cdlconcealbabyswall' as cdlconcealbabyswall,
+                data_row->>'cdlcounterattack' as cdlcounterattack,
+                data_row->>'cdldarkcloudcover' as cdldarkcloudcover,
+                data_row->>'cdldoji' as cdldoji,
+                data_row->>'cdldojistar' as cdldojistar,
+                data_row->>'cdldragonflydoji' as cdldragonflydoji,
+                data_row->>'cdlengulfing' as cdlengulfing,
+                data_row->>'cdleveningdojistar' as cdleveningdojistar,
+                data_row->>'cdleveningstar' as cdleveningstar,
+                data_row->>'cdlgapsidesidewhite' as cdlgapsidesidewhite,
+                data_row->>'cdlgravestonedoji' as cdlgravestonedoji,
+                data_row->>'cdlhammer' as cdlhammer,
+                data_row->>'cdlhangingman' as cdlhangingman,
+                data_row->>'cdlharami' as cdlharami,
+                data_row->>'cdlharamicross' as cdlharamicross,
+                data_row->>'cdlhighwave' as cdlhighwave,
+                data_row->>'cdlhikkake' as cdlhikkake,
+                data_row->>'cdlhikkakemod' as cdlhikkakemod,
+                data_row->>'cdlhomingpigeon' as cdlhomingpigeon,
+                data_row->>'cdlidentical3crows' as cdlidentical3crows,
+                data_row->>'cdlinneck' as cdlinneck,
+                data_row->>'cdlinvertedhammer' as cdlinvertedhammer,
+                data_row->>'cdlkicking' as cdlkicking,
+                data_row->>'cdlkickingbylength' as cdlkickingbylength,
+                data_row->>'cdlladderbottom' as cdlladderbottom,
+                data_row->>'cdllongleggeddoji' as cdllongleggeddoji,
+                data_row->>'cdllongline' as cdllongline,
+                data_row->>'cdlmarubozu' as cdlmarubozu,
+                data_row->>'cdlshortline' as cdlshortline,
+                data_row->>'cdlspinningtop' as cdlspinningtop,
+                data_row->>'cdlstalledpattern' as cdlstalledpattern,
+                data_row->>'cdlsticksandwich' as cdlsticksandwich,
+                data_row->>'cdltakuri' as cdltakuri,
+                data_row->>'cdltasukigap' as cdltasukigap,
+                data_row->>'cdlthrusting' as cdlthrusting,
+                data_row->>'cdltristar' as cdltristar,
+                data_row->>'cdlunique3river' as cdlunique3river,
+                data_row->>'cdlupsidegap2crows' as cdlupsidegap2crows,
+                data_row->>'cdlxsidegap3methods' as cdlxsidegap3methods,
+                data_row->>'price_on_time' AS price_on_time,
+                data_row->>'price_after_15min' AS price_after_15min,
+                data_row->>'price_after_30min' AS price_after_30min,
+                data_row->>'price_after_1hour' AS price_after_1hour,
+                data_row->>'price_after_4hour' AS price_after_4hour,
+                data_row->>'price_after_12hour' AS price_after_12hour,
+                data_row->>'price_after_1day' AS price_after_1day,
+                data_row->>'price_after_2day' AS price_after_2day,
+                data_row->>'price_after_3day' AS price_after_3day,
+                data_row->>'price_after_4day' AS price_after_4day,
+                data_row->>'price_after_5day' AS price_after_5day,
+                data_row->>'price_after_6day' AS price_after_6day
             FROM
-                {table_name_f} f
-            JOIN
-                {table_name_t} t
-            ON
-                f.ticker = t.ticker AND f.tick_datetime = t.tick_datetime
-            WHERE f.ticker = '{ticker}' 
-                AND f.tick_datetime BETWEEN '{start}' AND '{end}'
+                {table_name} 
+            WHERE ticker = '{ticker}' 
+                AND tick_datetime BETWEEN '{start}' AND '{end}'
             ORDER BY
-            f.tick_datetime DESC
+            tick_datetime DESC
             ;
         """
         return self.postgres.read_all(query) 
@@ -228,3 +250,4 @@ class UpbitTransactionDao():
         table_name_t = f"dataset_upbit_transaction_target_{year}"
         
         return table_name_f, table_name_t
+    
