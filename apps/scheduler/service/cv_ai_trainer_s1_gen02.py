@@ -14,6 +14,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 
 import pandas as pd
 import datetime
+import time
 
 import os
 import inspect
@@ -51,8 +52,7 @@ class CvAiTrainerS1Gen02(ModelConfigHandler, OptionHandler):
         self.dataset_table_prefix = None
         self.load_options(seq)
         
-        # 모델 구성 로드
-        super().__init__()
+        # 모델 구성 오토 로드
         self.load_model_config(self.model_config_path)
         
         self.seq = seq
@@ -67,29 +67,37 @@ class CvAiTrainerS1Gen02(ModelConfigHandler, OptionHandler):
         
     def run(self):
         
+        local_path = self.minio.generate_local_path("h5")
+        self.minio_path = self.minio.generate_minio_model_path(folder_path=self.minio.generate_minio_folder_path(), file_name=f"{self.ticker}_{self.targets[0]}_{generate_micro_date()}", file_exe="h5")
+        
         try:
             # 데이터 조회
             df = self.get_dataframe()
             
-            # 모델 생성
-            self.model_path = self.generate_model(df)
+            # 학습 데이터 전처리
+            df = self.preprocess_df_by_model_config(df)
             
-            # local_path = "./my_data.xlsx"
-            # minio_path = "/datasets/2025/05/23/2025-05-23 14:30:00_2.xlsx"
-            # df['tick_datetime'] = df['tick_datetime'].dt.tz_localize(None)
-                
-            # # Excel 파일로 저장
-            # df.to_excel(local_path, index=False)  # 현재 작업 디렉토리에 저장
-
-            # self.minio.upload_file(minio_path, local_path)
-            # os.remove(local_path)
-        
-            # # 자동 백테스팅
-            # if self.auto_back_test == "Y":
-            #     self.execute_back_test()
+            # 모델 생성
+            self.redis.save_msg_on_Q(f"학습 시작, {self.minio_path}")
+            model, history = self.generate_model(df)
+            
+            # 모델 업로드
+            model.save(local_path, save_format="h5")
+            self.minio.upload_file(self.minio_path, local_path)
+            
+            self.redis.save_msg_on_Q(f"학습 종료, {self.minio_path}")
+            self.redis.save_msg_on_Q(f"최종 훈련 정확도 : {history.history['accuracy'][-1]}")
+            self.redis.save_msg_on_Q(f"최종 검증 정확도 : {history.history['val_accuracy'][-1]}")
+            
+            # 자동 백테스팅
+            self.execute_back_test()
         
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+    
+        finally:
+            if os.path.exists(local_path):
+                os.remove(local_path)
         
     def get_dataframe(self):
         
@@ -120,30 +128,15 @@ class CvAiTrainerS1Gen02(ModelConfigHandler, OptionHandler):
             raise 
         
         # --- 데이터프레임으로 변환
-        self.log.info(f'upbit_transactions_list : {upbit_transactions_list[0]}')
         df = pd.DataFrame(upbit_transactions_list)
-        
-        # --- 데이터 전처리
-        df = self.preprocess_df_by_model_config(df)
         
         return df 
     
     def generate_model(self, df):
-        
+
         try:
-            self.redis.save_msg_on_Q(f"학습 시작, {minio_path}")
-            
-            # df 카피
-            data = df.copy()
-            
-            # 모덜 구성 셋팅
-            model_config = self.get_model_config()
-            features = model_config.get("features")
-            target = model_config.get("targets")[0]
-            hyperparameters = model_config.get("hyperparameters")
-            
-            #
-            X, Y = data[features].values, data[target].values
+            # 데이터 분리
+            X, Y = df[self.features].values, df[self.targets[0]].values
             
             # 클래스 가중치 계산 (Y는 정수 인코딩된 라벨)
             class_weight = self.sklearn_module.calculate_class_weight(Y)
@@ -166,37 +159,32 @@ class CvAiTrainerS1Gen02(ModelConfigHandler, OptionHandler):
             # 모델 생성
             model, history = self.tensorflow_module.train_by_lstm_model(
                 X, Y, 
-                hyperparameters.get("time_steps"), 
-                hyperparameters.get("batch_size"), 
-                hyperparameters.get("epochs"), 
-                hyperparameters.get("early_stop"), 
+                self.hyperparameters.get("time_steps"), 
+                self.hyperparameters.get("batch_size"), 
+                self.hyperparameters.get("epochs"), 
+                self.hyperparameters.get("early_stop"), 
                 class_weight
             )
-
-            # 모델 저장
-            local_path = self.minio.generate_local_path("h5")
-            minio_path = self.minio.generate_minio_model_path(folder_path=self.minio.generate_minio_folder_path(), file_name=f"{self.ticker}_{target}_{generate_micro_date()}", file_exe="h5")
             
-            model.save(local_path, save_format="h5")
-            self.minio.upload_file(minio_path, local_path)
-                
-            # 결과 post    
-            self.redis.save_msg_on_Q(f"학습 종료, {minio_path}")
-            self.redis.save_msg_on_Q(f"최종 훈련 정확도 : {history.history['accuracy'][-1]}")
-            self.redis.save_msg_on_Q(f"최종 훈련 정확도 : {history.history['val_accuracy'][-1]}")
+            return model, history
         
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
             self.redis.save_msg_on_Q(f"학습 중 애러: {str(datetime.datetime.now())}")
             raise
-    
-        finally:
-            if os.path.exists(local_path):
-                os.remove(local_path)
-            
-            self.redis.save_msg_on_Q(f"학습 죵료: {str(datetime.datetime.now())}")
                     
-    
-
-    
+    def execute_back_test(self):
         
+        #  백테스팅 옵션 생성
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="ticker", option_val=self.ticker, runnable_service_seq=self.auto_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="model_path", option_val=self.minio_path, runnable_service_seq=self.auto_back_test_seq)
+        self.runnable_services_dao.upsert_runnable_service_options(option_key="model_config_path", option_val=self.model_config_path, runnable_service_seq=self.auto_back_test_seq)
+        
+        params = {"use_yn" : "N"}
+        self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)
+        time.sleep(2.5)
+        
+        # 백테스팅 재시작
+        if self.auto_back_test == "Y":
+            params = {"use_yn" : "Y"}
+            self.runnable_services_dao.update_runnable_services(params=params, seq=self.auto_back_test_seq)

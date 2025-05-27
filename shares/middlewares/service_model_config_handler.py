@@ -14,10 +14,14 @@ class ModelConfigHandler():
     """
     
     def __init__(self):
+        self._initialized = False
+        self._initialize()
+        
+    def _initialize(self):
         self.log = system_module_log
         self.dataframe = DataFrame()
         self.standard_scaler = StandardScaler()
-        self.model_model_config = None 
+        self.model_config = None 
         
         self.model_name = None
         self.model_type = None
@@ -28,50 +32,43 @@ class ModelConfigHandler():
         self.hyperparameters = None
         
         self.df = None
+        self._initialized = True
 
     """
     loader
     """
     def load_model_config(self, model_config_path: str):
         
-        with open(model_config_path, 'r') as f:
-            self.model_model_config = yaml.safe_load(f)
+        if not getattr(self, "_initialized", False):
+            self._initialize()
         
-            self.model_name = self.model_model_config["model_name"]
-            self.model_type = self.model_model_config["model_type"]
-            self.features = self.model_model_config["features"]
-            self.targets = self.model_model_config["targets"]
-            self.derived_params = self.model_model_config["derived_params"]
-            self.preprocessing = self.model_model_config["preprocessing"]
-            self.hyperparameters = self.model_model_config["hyperparameters"]
-    """
-    getter
-    """
-    def get_model_config(self):
-        model_config = {
-            "model_name" : self.model_name,
-            "model_type" : self.model_type,
-            "features" : self.features,
-            "targets" : self.targets,
-            "derived_params" : self.derived_params,
-            "preprocessing" : self.preprocessing,
-            "hyperparameters" : self.hyperparameters,
-        }
-        return model_config
-
-    def get_df(self):
-        return self.df
+        with open(model_config_path, 'r') as f:
+            self.model_config = yaml.safe_load(f)
+        
+            self.model_name = self.model_config["model_name"]
+            self.model_type = self.model_config["model_type"]
+            self.features = self.model_config["features"]
+            self.targets = self.model_config["targets"]
+            self.derived_params = self.model_config["derived_params"]
+            self.preprocessing = self.model_config["preprocessing"]
+            self.hyperparameters = self.model_config["hyperparameters"]
     
     """
     preprocessor
     """
     def preprocess_df_by_model_config(self, df):
         
-        # 데이터 셋팅
-        derived_params = self.model_model_config["derived_params"]
+        if not getattr(self, "_initialized", False):
+            self._initialize()
+        
+        # config 셋팅
+        derived_params = self.model_config["derived_params"]
         preprocessing_fillna = self.preprocessing.get("fillna") 
         preprocessing_convert_numeric = self.preprocessing.get("convert_numeric") 
         preprocessing_scaling = self.preprocessing.get("scaling") 
+        
+        # --- 전처리 시작
+        df = df.copy()
         
         # 파생변수 추가
         for derived_param in derived_params:
@@ -79,15 +76,15 @@ class ModelConfigHandler():
             expression = derived_param.get("expression")
             if name:
                 if expression:
-                    df = self.apply_to_df(df, expression, 'CHANGE_AFTER_2DAY')
+                    df = self.apply_derived_to_df(df, expression, name)
 
         # Fill NaNs, 결측치
         if preprocessing_fillna:
             if preprocessing_fillna == "all":
-                df.fillna(df.mean(), inplace=True)
+                df.fillna(df.mean(numeric_only=True), inplace=True)
                 
             else:
-                df[preprocessing_fillna].fillna(df[preprocessing_fillna].mean(), inplace=True)
+                df[preprocessing_fillna].fillna(df[preprocessing_fillna].mean(numeric_only=True), inplace=True)
         
         # 수치화 변경
         if preprocessing_convert_numeric:
@@ -107,7 +104,7 @@ class ModelConfigHandler():
         
         return df
 
-    def apply_to_df(self, df, expr, column_name):
+    def apply_derived_to_df(self, df, expr, column_name):
         df[column_name] = df.apply(lambda row: self.eval_expr(expr, row.to_dict()), axis=1)
         return df
 
@@ -169,3 +166,21 @@ class ModelConfigHandler():
                 
         tree = ast.parse(expr, mode='eval').body
         return _eval(tree)
+    
+    """
+    getter
+    """
+    def get_model_config(self):
+        model_config = {
+            "model_name" : self.model_name,
+            "model_type" : self.model_type,
+            "features" : self.features,
+            "targets" : self.targets,
+            "derived_params" : self.derived_params,
+            "preprocessing" : self.preprocessing,
+            "hyperparameters" : self.hyperparameters,
+        }
+        return model_config
+
+    def get_df(self):
+        return self.df

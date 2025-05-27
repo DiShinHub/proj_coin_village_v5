@@ -80,20 +80,17 @@ features:
     - cdlxsidegap3methods
 
 targets: 
-    - change_after_2day
+    - change_after_1day
     # - change_after_3day
 
 derived_params:
-  - name: change_after_2day
+  - name: change_after_1day
     expression: >
-      2 if ((float(price_after_2day) - float(price_on_time)) / float(price_on_time) * 100) > 2
-      else 0 if ((float(price_after_2day) - float(price_on_time)) / float(price_on_time) * 100) < -2
+      2 if ((float(price_after_1day) - float(price_on_time)) / float(price_on_time) * 100) > 2
+      else 0 if ((float(price_after_1day) - float(price_on_time)) / float(price_on_time) * 100) < -2
       else 1
   # - name: change_after_3day
-  #   expression: >
-  #     2 if ((float(price_after_3day) - float(price_on_time)) / float(price_on_time) * 100) > 2
-  #     else 0 if ((float(price_after_3day) - float(price_on_time)) / float(price_on_time) * 100) < -2
-  #     else 1
+  #   expression: "close.rolling(5).mean()"
       
 preprocessing:
   fillna: all

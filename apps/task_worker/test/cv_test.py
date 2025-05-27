@@ -11,6 +11,7 @@ from shares.dao.trade_result_dao import TradeResultDao
 from shares.dao.upbit_transaction_dao import UpbitTransactionDao
 from shares.functions.common_function import *
 
+from shares.middlewares.service_model_config_handler import ModelConfigHandler
 from collections import defaultdict
         
 import pandas as pd
@@ -20,6 +21,51 @@ import time
 import datetime
 
 
+"""
+example of ModelConfigHandler
+"""
+class SomeClass(ModelConfigHandler):
+    def __init__(self, model_config_path):
+        super().__init__()
+        super().load_model_config(model_config_path)
+    
+    def pre_process(self, df):
+        df = super().preprocess_df_by_model_config(df)
+    
+    def main(self):
+        self.features
+        self.targets
+        self.hyperparameters
+        #...
+        
+class SomeClass2(ModelConfigHandler):
+    
+    def __init__(self, model_config_path):
+        self.model_config_handler = ModelConfigHandler()
+        self.model_config_handler.load_model_config(model_config_path)
+    
+    def pre_process(self, df):
+        df = self.model_config_handler.preprocess_df_by_model_config(df)
+    
+    def main(self):
+        self.model_config_handler.features
+        self.model_config_handler.targets
+        self.model_config_handler.hyperparameters
+        #...
+        
+def some_method(model_config_path):
+    model_config_handler = ModelConfigHandler()
+    model_config_handler.load_model_config(model_config_path)
+    df = model_config_handler.preprocess_df_by_model_config(df)
+    
+    model_config_handler.features
+    model_config_handler.targets
+    model_config_handler.hyperparameters
+    #...
+
+"""
+example of ModelConfigHandler
+"""
 
 class Test():
 

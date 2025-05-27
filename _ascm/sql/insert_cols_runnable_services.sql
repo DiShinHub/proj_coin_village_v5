@@ -1,6 +1,7 @@
 DELETE FROM runnable_services;
 
 INSERT INTO runnable_services (execution_type,execution_path,execution_class,execution_method,product_name,reg_dt,reg_member_seq,mod_dt,mod_member_seq,use_yn) VALUES
+ 	 ('scheduler','scheduler.service.cv_ai_back_tester_s1_gen02','CvAiBackTesterS1Gen02','regist','Back Test Bee','2025-04-14 14:10:41.973+09',0,'2025-04-14 14:10:41.973+09',0,'N'),
 	 ('scheduler','scheduler.service.cv_ai_trainer_s1_gen02','CvAiTrainerS1Gen02','run','Queen Bee','2025-05-23 09:34:56.467044+09',0,'2025-05-23 09:34:56.467044+09',0,'N'),
 	 ('scheduler','scheduler.service.cv_data_collector_s1_gen02','CvDataCollectorS1Gen02','run','Honey Bee','2025-05-22 11:34:13.66111+09',0,'2025-05-22 11:34:13.66111+09',0,'Y'),
 	 ('task_worker','task_worker.service.cv_system_s1_gen01','CvSystemS1Gen01','run','Redis Cleaner','2025-05-07 14:58:32.567698+09',0,'2025-05-07 14:58:32.567698+09',0,'N'),

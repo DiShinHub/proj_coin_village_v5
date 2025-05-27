@@ -55,9 +55,8 @@ class CvAutoTraderS2Gen01(OrderbookHandler, OptionHandler):
         # --- 주문 강도 파싱
         order_intensity = self.order_intensities.get(ticker, ORDER_INTENSITY_DEFAULT)
         
-        # --- 주문 정보 추출
-        order_intensity = find_target_dictionary("ticker", ticker, self.order_intensities) # 티커별 주문 강도
-        order_book = self.redis.get_json_data(key)                                         # 호가 정보
+        # --- 호가 정보 추출
+        order_book = self.redis.get_json_data(key) 
         
         # --- 실행
         cv_auto_trader_s2_gen01_main = CvAutoTraderS2Gen01Core(ticker, order_intensity, order_book, self.order_max, self.log, self.runnable_services_seq)

@@ -126,3 +126,42 @@ services:
       - MINIO_LOCAL=${MINIO_LOCAL}
     shm_size: '1gb'
     restart: unless-stopped
+
+  jupyter:
+    container_name: ${SERVICE_NAME_JUPYTER}
+    build:
+      context: ../
+      dockerfile: ./docker/DockerfileJupyter
+    ports:
+      - "${SERVICE_PORT_JUPYTER}:${SERVICE_PORT_JUPYTER}"
+    volumes:
+      - ./volumes/logs/${SERVICE_NAME_JUPYTER}:/apps/logs/${SERVICE_NAME_JUPYTER}
+      - ./volumes/data/jupyter:/apps/jupyter/work
+      - ../shares:/apps/shares
+      - ../apps/labs:/apps/jupyter/work
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - CONTAINER_NAME=${SERVICE_NAME_JUPYTER}
+      - APP_PORT=${SERVICE_PORT_JUPYTER}
+      - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
+      - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=${APP_NAME}-redis-compose
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB}
+      - UPBIT_ACCESS_KEY=${UPBIT_ACCESS_KEY}
+      - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
+      - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
+      - MINIO_INTERNAL_URL=${MINIO_INTERNAL_URL}
+      - MINIO_EXTERNAL_URL=${MINIO_EXTERNAL_URL}
+      - MINIO_SERVICE_PORT=${MINIO_SERVICE_PORT}
+      - MINIO_CONSOLE_PORT=${MINIO_CONSOLE_PORT}
+      - MINIO_PRESIGN_URL_EXPIRE=${MINIO_PRESIGN_URL_EXPIRE}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET}

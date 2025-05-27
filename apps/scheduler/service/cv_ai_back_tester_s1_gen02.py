@@ -1,31 +1,32 @@
 from shares.middlewares.service_options_handler import OptionHandler
+from shares.middlewares.service_model_config_handler import ModelConfigHandler
 from shares.modules.log import Log
 from shares.modules.redis import r as redis_single
 from shares.modules.minio import MinioModule
 from shares.modules.upbit import Upbit
 from shares.modules.tensorflow_module import TensorflowModule
 from shares.modules.sklearn_module import SklearnModule
-from shares.functions.common_function import map_interval_to_interval_min
 from shares.decorations.try_again import try_again
 from shares.dao.ai_back_test_result_dao import AiBackTestResultDao
 
-from scheduler.core.cv_ai_back_tester_s1_gen02_core import CvAiBackTesterS1Gen02Core
+from tensorflow.keras.models import load_model
+
 from scheduler.core.cv_data_collector_s1_gen02_core import CvDataCollectorS1Gen02Core
 
-from apscheduler.schedulers.background import BackgroundScheduler
-# from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 import pandas as pd
+import numpy as np
 import datetime
 import time
 import random
+import json
 
 import os
 import inspect
 
 
-class CvAiBackTesterS1Gen02(OptionHandler):
+class CvAiBackTesterS1Gen02(ModelConfigHandler, OptionHandler):
     """
     Service group : AiTrainer
     Service no : 1
@@ -33,7 +34,7 @@ class CvAiBackTesterS1Gen02(OptionHandler):
     Product Name : Back Test Bee
     
     Role : 
-    1. KRW-BTC 예측 모델 생성
+    1. KRW-BTC 예측 모델 백테스트
     """
     slack_post_prefix = ":bee: Back Test Bee."
     
@@ -49,12 +50,14 @@ class CvAiBackTesterS1Gen02(OptionHandler):
         
         self.seq = seq
          
-        # service attrs
-        self.ticker_list = None
-        self.model_path_list = None
-        self.col_f = None
-        self.time_steps = None
+        # 옵션 오토 로드
+        self.ticker = None
+        self.model_path = None
+        self.model_config_path = None
         self.load_options(seq)
+        
+        # 모델 구성 오토 로드
+        self.load_model_config(self.model_config_path)
         
     """
     regist scheduler
@@ -63,23 +66,19 @@ class CvAiBackTesterS1Gen02(OptionHandler):
         
         try:
             # --- 정각에 실행하도록 조정 
-            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 대기. {self.ticker_list}를 대상으로 정각에 맞춰 실행.")
-            self.wait_until_next_noon()
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 대기. {self.ticker}를 대상으로 정각에 맞춰 실행.")
+            #self.wait_until_next_noon()
+        
+            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 시작.")
+            # executors = {
+            #     'default': ThreadPoolExecutor(20),  # 최대 20개 스레드
+            # }
+            scheduler = BlockingScheduler()
+            #scheduler = BackgroundScheduler(executors=executors)
             
-            # --- 스케쥴러 등록
-            self.redis.save_msg_on_Q(f"{self.slack_post_prefix} 백테스팅 실행.")
-            for model_path in self.model_path_list:
-                self.regist_scheduler(
-                    ticker="KRW-BTC", 
-                    model_path=model_path, 
-                    interval=self.get_interval_by_model_path(model_path), 
-                    interval_prev=self.get_interval_prev_by_model_path(model_path),
-                    is_by_prev=self.get_is_by_prev_by_model_path(model_path)
-                )
-                
-            # 메인 스레드는 계속 살아있어야 함
-            while True:
-                time.sleep(1)
+            scheduler.add_job(self.run, 'interval', minutes=10)
+            
+            scheduler.start()
 
         except Exception as e:
             self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
@@ -95,110 +94,142 @@ class CvAiBackTesterS1Gen02(OptionHandler):
             next_time = now.replace(minute=next_minute, second=0, microsecond=0)
             
         wait_seconds = (next_time - now).total_seconds()
-        time.sleep(wait_seconds)       
+        time.sleep(wait_seconds)      
         
-    def regist_scheduler(self, ticker, model_path, interval, interval_prev, is_by_prev):
-
-        executors = {
-            'default': ThreadPoolExecutor(20),  # 최대 20개 스레드
-        }
-        # scheduler = BlockingScheduler(executors=executors)
-        scheduler = BackgroundScheduler(executors=executors)
-        
-        if "min_" in model_path:
-            scheduler.add_job(self.back_test_model, 'interval', minutes=map_interval_to_interval_min(interval), args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=1))
-            
-        elif "hour_" in model_path:
-            scheduler.add_job(self.back_test_model, 'interval', hours=map_interval_to_interval_min(interval)/60, args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=2))
-            
-        elif "day_" in model_path:
-            scheduler.add_job(self.back_test_model, 'interval', days=map_interval_to_interval_min(interval)/60/24, args=[ticker, model_path, interval, interval_prev, is_by_prev], max_instances=2, next_run_time=datetime.datetime.now()+datetime.timedelta(seconds=3))
-            
-        scheduler.start()
-    
-    def get_is_by_prev_by_model_path(self, model_path):
-        
-        # is_by_prev를 모델 경로를 통해 설정
-        if "by_ontime" in model_path: is_by_prev = False
-        else: is_by_prev = True
-        
-        return is_by_prev
-        
-    def get_interval_by_model_path(self, model_path):
-        
-        # interval를 모델 경로를 통해 설정
-        interval = None
-        if "15min_" in model_path: interval = "minute15"
-        elif "30min_" in model_path: interval = "minute30"
-        elif "1hour_" in model_path: interval = "hour1"
-        elif "4hour_" in model_path: interval = "hour4"
-        elif "12hour_" in model_path: interval = "hour12"
-        elif "1day_" in model_path: interval = "day"
-        
-        return interval
-        
-    def get_interval_prev_by_model_path(self, model_path):
-        
-        # interval_prev를 모델 경로를 통해 설정
-        interval_prev = None
-        if "by_prev" in model_path:
-            if "15min_" in model_path: interval_prev = None
-            elif "30min_" in model_path: interval_prev = "minute15"
-            elif "1hour_" in model_path: interval_prev = "minute30"
-            elif "4hour_" in model_path: interval_prev = "hour1"
-            elif "12hour_" in model_path: interval_prev = "hour4"
-            elif "1day_" in model_path: interval_prev = "hour12"
-        
-        return interval_prev
-    
     """
     biz
     """
-    def back_test_model(self, ticker, model_path, interval, interval_prev=None, is_by_prev=False):
+    def run(self):
+        
+        # --- 모델 파일 다운로드
+        local_path = self.minio.generate_local_path(file_exe="h5")
+        self.minio.download_file(self.model_path, local_path)
+        
+        try:
+            # --- 백테스팅 시작 시간
+            back_test_start_dt = datetime.datetime.now()
             
-        # --- 백테스팅 시작 시간
-        back_test_start_dt = datetime.datetime.now()
-    
-        # --- 예측 데이터 조회
-        df = self.get_target_prediction_data(ticker)
+            # --- 예측에 쓰일 데이터 조회
+            df = self.get_data_for_prediction()
+            
+            # --- 데이터 전처리
+            df = self.preprocess_df_by_model_config(df)
+            
+            # --- 예측 전 현재가 
+            current_price_before = self.get_current_price()
+            
+            # --- 모델 로드
+            model = load_model(local_path)    
+                
+            # --- 예측
+            prediction = self.execute_prediction(model, df)
+            self.log.info(f'prediction : {prediction}')
+                
+            # --- 모델 파기 후 대기
+            del model 
+            
+            elapsed = (datetime.datetime.now() - back_test_start_dt).total_seconds()
+            wait_time = max(24*60*60 - elapsed, 0) # 1days
+            time.sleep(wait_time)
+                    
+            # --- 예측 후 현재가 조회
+            current_price_after = self.get_current_price()
+            
+            # --- 실제 결과 산출 
+            variables = {
+                "price_after_1day" : current_price_before,
+                "price_on_time" : current_price_after
+            }
+            expression = self.derived_params[0].get("expression")
+            real = self.eval_expr(expression, variables)
+            
+            # --- 상승/하락여부 예측과 실제 결과 비교 
+            hit_yn = "N"
+            if real == prediction:
+                hit_yn = "Y"
+                
+            # --- 백테스팅 종료 시간
+            back_test_end_dt = datetime.datetime.now()
+            
+            # --- 결과 DB에 저장
+            result_row = json.dumps({
+                "back_test_start_dt" : str(back_test_start_dt),
+                "back_test_end_dt" : str(back_test_end_dt),
+                "current_price_after" : current_price_after,
+                "current_price_before" : current_price_before,
+                "prediction" : prediction,
+                "real" : real
+            })
+            self.ai_back_test_result_dao.insert_ai_back_test_result(
+                ticker=self.ticker,
+                model_path=self.model_path,
+                result_row=result_row,
+                hit_yn=hit_yn,
+                runnable_services_seq=self.seq,
+                reg_member_seq=0,
+            )
+            
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
         
-        # --- 백테스팅 
-        cv_ai_back_tester_s1_gen01_core = CvAiBackTesterS1Gen02Core(self.log, self.seq)
-        
-        cv_ai_back_tester_s1_gen01_core.set_feature(self.col_f)
-        cv_ai_back_tester_s1_gen01_core.set_hyper_parameters(
-            time_steps=self.time_steps
-        )
-        cv_ai_back_tester_s1_gen01_core.back_test_model(df, ticker, model_path, interval, interval_prev, is_by_prev, back_test_start_dt)
-    
-    def get_target_prediction_data(self, ticker):
-        
-        # 동시 호출로 인한 API 호출 제한 완화 
-        delay = random.uniform(0.1, 2.1)  
-        time.sleep(delay)
+        finally:
+            # 모델 파일 삭제
+            if os.path.exists(local_path):
+                os.remove(local_path)
 
-        now = datetime.datetime.now()
-        datetime_list = [now - datetime.timedelta(minutes=5 * i) for i in range(self.time_steps)]
-        datetime_str_list = [dt.strftime("%Y-%m-%d %H:%M:%S") for dt in datetime_list]
+    def get_data_for_prediction(self):
         
-        collected_data_f_list = []
-        for datetime_str in datetime_str_list:
-            collected_data_f = self.get_collected_data_f(ticker, datetime_str)
-            collected_data_f_list.append(collected_data_f)
-            
+        try:
             # 동시 호출로 인한 API 호출 제한 완화 
-            delay = random.uniform(0.1, 1.1)  
+            delay = random.uniform(0.1, 2.1)  
             time.sleep(delay)
+
+            now = datetime.datetime.now()
+            datetime_list = [now - datetime.timedelta(minutes=5 * i) for i in range(self.hyperparameters.get("time_steps"))]
+            datetime_str_list = [dt.strftime("%Y-%m-%d %H:%M:%S") for dt in datetime_list]
+            
+            collected_data_list = []
+            for datetime_str in datetime_str_list:
+                collected_data = self.get_collected_data(datetime_str)
+                collected_data_list.append(collected_data)
+                
+                # 동시 호출로 인한 API 호출 제한 완화 
+                delay = random.uniform(0.1, 1.1)  
+                time.sleep(delay)
+            
+            #df = pd.DataFrame(collected_data_list, columns=self.features)
+            df = pd.DataFrame(collected_data_list)
+            return df
         
-        df = pd.DataFrame(collected_data_f_list, columns=self.col_f)
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            raise
+
+    def execute_prediction(self, model, df):
         
-        return df
+        try:
+            prediction_softmax = self.tensorflow_module.predict_by_lstm_model(model, df[self.features], self.hyperparameters.get("time_steps"))
+            predicted_label = np.argmax(prediction_softmax, axis=1)
+            prediction = int(predicted_label[0])
+            return prediction
+        
+        except Exception as e:
+            self.log.info(f"class : {self.__class__.__name__}, method : {inspect.currentframe().f_code.co_name}, error : {str(e)}")
+            raise
     
+    """
+    sub
+    """
     @try_again(num=10)
-    def get_collected_data_f(self, ticker, datetime_str):
+    def get_collected_data(self, datetime_str):
         
         cv_auto_trader_s2_gen01_core = CvDataCollectorS1Gen02Core(self.log)
-        cv_auto_trader_s2_gen01_core.init_upbit_ticker(ticker)
-        collected_data_f = cv_auto_trader_s2_gen01_core.set_features(datetime_str)
-        return collected_data_f
+        cv_auto_trader_s2_gen01_core.set_ticker(self.ticker)
+        cv_auto_trader_s2_gen01_core.set_tick_datetime(datetime_str)
+        collected_data = cv_auto_trader_s2_gen01_core.collect_data()
+        return collected_data
     
+    @try_again(num=10)
+    def get_current_price(self):
+        self.upbit.set_ticker(self.ticker)
+        return self.upbit.get_current_price()
