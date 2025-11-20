@@ -62,6 +62,19 @@ class MinioModule():
         minio_upload_path = f"models/{folder_path}/{file_name}.{file_exe}"
         return minio_upload_path
 
+    def generate_df_folder_path(self):
+        """
+        def description : df 저장 경로 셋팅
+        """
+        now = datetime.datetime.now()
+        folder_path = now.strftime("%Y/%m/%d")
+        return folder_path
+    
+    def generate_df_model_path(self, folder_path, file_name, file_exe):
+        
+        df_upload_path = f"datasets/{folder_path}/{file_name}.{file_exe}"
+        return df_upload_path
+
     def is_file_exist(self, file_path):
         """
         def description : 파일조회

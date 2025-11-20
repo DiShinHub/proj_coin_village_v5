@@ -2,22 +2,23 @@ version: '1.1'
 
 services:
 
-  cv-apps-scheduler:
-    container_name: ${SERVICE_NAME_SCHEDULER}
+  cv-apps-background:
+    container_name: ${SERVICE_NAME_BACKGROUND}
     build:
       context: ../
-      dockerfile: ./docker/DockerfileCvAppsScheduler
+      dockerfile: ./docker/DockerfileCvAppsBackground
     ports:
-      - "${SERVICE_PORT_SCHEDULER}:${SERVICE_PORT_SCHEDULER}"
+      - "${SERVICE_PORT_BACKGROUND}:${SERVICE_PORT_BACKGROUND}"
     volumes:
-      - ./volumes/logs/${SERVICE_NAME_SCHEDULER}:/apps/logs/${SERVICE_NAME_SCHEDULER}
-      - ../apps/scheduler:/apps/scheduler
+      - ./volumes/logs/${SERVICE_NAME_BACKGROUND}:/apps/logs/${SERVICE_NAME_BACKGROUND}
+      - ../apps/background:/apps/background
       - ../shares:/apps/shares
+      - ./mlflow-data:/mlflow-data
     environment:
       - TZ=${TIMEZONE}
-      - CONTAINER_NAME=${SERVICE_NAME_SCHEDULER}
-      - APP_PORT=${SERVICE_PORT_SCHEDULER}
-      - APP_LOG_LOCATION=/apps/logs/${SERVICE_NAME_SCHEDULER}
+      - CONTAINER_NAME=${SERVICE_NAME_BACKGROUND}
+      - APP_PORT=${SERVICE_PORT_BACKGROUND}
+      - APP_LOG_LOCATION=/apps/logs/${SERVICE_NAME_BACKGROUND}
       - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
       - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -36,27 +37,32 @@ services:
       - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
       - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
       - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - KIS_APP_KEY=${KIS_APP_KEY}
+      - KIS_SECRET_KEY=${KIS_SECRET_KEY}
       - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_HOST}:${MLFLOW_CONTAINER_PORT}
+      - NOTION_KEY=${NOTION_KEY}
     depends_on:
       - cv-db-postgres
       - cv-redis
 
-  cv-apps-task-worker:
-    container_name: ${SERVICE_NAME_TASK_WORKER}
+  jupyter:
+    container_name: ${SERVICE_NAME_JUPYTER}
     build:
       context: ../
-      dockerfile: ./docker/DockerfileCvAppsTaskWorker
+      dockerfile: ./docker/DockerfileJupyter
     ports:
-      - "${SERVICE_PORT_TASK_WORKER}:${SERVICE_PORT_TASK_WORKER}"
+      - "${SERVICE_PORT_JUPYTER}:${SERVICE_PORT_JUPYTER}"
     volumes:
-      - ./volumes/logs/${SERVICE_NAME_TASK_WORKER}:/apps/logs/${SERVICE_NAME_TASK_WORKER}
+      - ./volumes/logs/${SERVICE_NAME_JUPYTER}:/apps/logs/${SERVICE_NAME_JUPYTER}
       - ../apps/task_worker:/apps/task_worker
+      - ../apps/scheduler:/apps/scheduler
       - ../shares:/apps/shares
+      - ../labs:/apps/jupyter/work
     environment:
-      - TZ=${TIMEZONE}
-      - CONTAINER_NAME=${SERVICE_NAME_TASK_WORKER}
-      - APP_PORT=${SERVICE_PORT_TASK_WORKER}
-      - APP_LOG_LOCATION=/apps/logs/${SERVICE_NAME_TASK_WORKER}
+      - JUPYTER_ENABLE_LAB=yes
+      - CONTAINER_NAME=${SERVICE_NAME_JUPYTER}
+      - APP_PORT=${SERVICE_PORT_JUPYTER}
       - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
       - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -75,10 +81,11 @@ services:
       - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
       - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
       - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - KIS_APP_KEY=${KIS_APP_KEY}
+      - KIS_SECRET_KEY=${KIS_SECRET_KEY}
       - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
-    depends_on:
-      - cv-db-postgres
-      - cv-redis
+      - MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_HOST}:${MLFLOW_CONTAINER_PORT}
+      - NOTION_KEY=${NOTION_KEY}
 
   cv-db-postgres:
     container_name: ${APP_NAME}-db-postgres-compose
@@ -126,42 +133,21 @@ services:
       - MINIO_LOCAL=${MINIO_LOCAL}
     shm_size: '1gb'
     restart: unless-stopped
-
-  jupyter:
-    container_name: ${SERVICE_NAME_JUPYTER}
+      
+  mlflow-server:
+    container_name: ${APP_NAME}-db-mlflow-compose
+    image: ghcr.io/mlflow/mlflow
     build:
       context: ../
-      dockerfile: ./docker/DockerfileJupyter
+      dockerfile: ./docker/DockerfileMlflow
     ports:
-      - "${SERVICE_PORT_JUPYTER}:${SERVICE_PORT_JUPYTER}"
+      - "${MLFLOW_CONTAINER_PORT}:${MLFLOW_CONTAINER_PORT}"
     volumes:
-      - ./volumes/logs/${SERVICE_NAME_JUPYTER}:/apps/logs/${SERVICE_NAME_JUPYTER}
-      - ./volumes/data/jupyter:/apps/jupyter/work
-      - ../shares:/apps/shares
-      - ../apps/labs:/apps/jupyter/work
+      - ./mlflow-data:/mlflow-data
     environment:
-      - JUPYTER_ENABLE_LAB=yes
-      - CONTAINER_NAME=${SERVICE_NAME_JUPYTER}
-      - APP_PORT=${SERVICE_PORT_JUPYTER}
-      - POSTGRES_HOST=${APP_NAME}-db-postgres-compose
-      - POSTGRES_PORT=${POSTGRES_CONTAINER_PORT}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_HOST=${APP_NAME}-redis-compose
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_DB=${REDIS_DB}
-      - UPBIT_ACCESS_KEY=${UPBIT_ACCESS_KEY}
-      - UPBIT_SECRET_KEY=${UPBIT_SECRET_KEY}
-      - BINANCE_ACCESS_KEY=${BINANCE_ACCESS_KEY}
-      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
-      - EXCHAGE_RATE_KEY=${EXCHAGE_RATE_KEY}
-      - MINIO_INTERNAL_URL=${MINIO_INTERNAL_URL}
-      - MINIO_EXTERNAL_URL=${MINIO_EXTERNAL_URL}
-      - MINIO_SERVICE_PORT=${MINIO_SERVICE_PORT}
-      - MINIO_CONSOLE_PORT=${MINIO_CONSOLE_PORT}
-      - MINIO_PRESIGN_URL_EXPIRE=${MINIO_PRESIGN_URL_EXPIRE}
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
-      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow_user:mlflow_pass@cv-db-postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=file:///mlflow-data  
+    depends_on:
+      - cv-db-postgres
+      - cv-redis
+

@@ -73,3 +73,34 @@ git clone https://github.com/DiShinHub/proj_coin_village_v5
 └── [README.md](http://readme.md/)       # 프로젝트 개요
 </pre>
 ---
+
+### **DB 백업 및 복구**
+1. 백업
+docker ps
+docker exec -it CV-db-postgres-compose bash
+cd /var/lib/postgresql/data
+pg_dump -U postgres -d postgres > backup.sql
+
+2. 복구
+docker ps
+docker exec -it CV-db-postgres-compose bash
+cd /var/lib/postgresql/data
+psql -U postgres -d postgres -f backup.sql
+
+### mlflow, postgres 설정
+
+1. DB 셋팅
+docker exec -it CV-db-postgres-compose psql -U postgres
+CREATE DATABASE mlflow;
+CREATE USER mlflow_user WITH PASSWORD 'mlflow_pass';
+GRANT ALL PRIVILEGES ON DATABASE mlflow TO mlflow_user;
+
+2. DB 업그레이드
+docker run -it --rm --network cv-project_default  -v mlflow-data:/mlflow-data  -e MLFLOW_BACKEND_STORE_URI=postgresql://mlflow_user:mlflow_pass@cv-db-postgres:5432/mlflow ghcr.io/mlflow/mlflow bash
+mlflow db upgrade postgresql://mlflow_user:mlflow_pass@cv-db-postgres:5432/mlflow
+
+3. 컨테이너 리로드 
+docker-compose ...  
+
+4. mlflow를 사용하는 서비스에서 아래 라이브러리가 요구 된다
+boto3, psycopg2

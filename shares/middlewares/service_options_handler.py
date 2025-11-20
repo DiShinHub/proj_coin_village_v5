@@ -5,9 +5,13 @@ class OptionHandler():
     
     def load_options(self, seq):
         """
-        def description : 옵션 fhem
+        def description : 옵션 로더
         
         - 클래스의 속성을 DB를 토대로 자동으로 채움
+        - init 단계에서 클래스의 속성 중 None 값인 속성 조회, required_options
+        - seq를 기준으로 DB에서 서비스 옵션 조회, service_options 
+        - required_options과 service_options를 비교하여 누락 값이 있으면 raise
+        - 없으면 required_options의 value값을 service_options로 채움
         
         Parameters
         ----------
@@ -24,7 +28,7 @@ class OptionHandler():
         
         # --- DB에서 서비스 옵션 조회 
         service_options = runnableServicesDao().get_runnable_service_options(seq)
-        incoming_options = {opt["option_key"] for opt in service_options}
+        incoming_options = {opt["option_key"].strip() for opt in service_options}
         
         # --- 시스템을 기준으로 DB에 누락 된 옵션이 있으면 raise
         missing_options = list(required_options - incoming_options)  

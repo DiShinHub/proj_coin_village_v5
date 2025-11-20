@@ -1,8 +1,8 @@
 DELETE FROM runnable_service_options;
 
-INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,use_yn) VALUES
+INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,activate_yn) VALUES
 	 ('dataset_table_prefix','dataset_upbit_transaction',11,'Y'),
-	 ('model_config_path','/apps/scheduler/model_config/cv_ai_trainer_s1_gen02_config.yaml',11,'Y'),
+	 ('auto_ml_path','/apps/scheduler/model_config/cv_ai_trainer_s1_gen02_config.yaml',11,'Y'),
 	 ('ticker','KRW-BTC',11,'Y'),
 	 ('dataset_load_term','210',11,'Y'),
 	 ('auto_back_test_seq','12',11,'Y'),
@@ -11,7 +11,7 @@ INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq
 	 ('scheduler_start_hour','4',11,'Y'),
 	 ('scheduler_start_day','1',11,'Y'),
 	 ('dataset_table_prefix','dataset_upbit_transaction',10,'Y');
-INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,use_yn) VALUES
+INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,activate_yn) VALUES
 	 ('ticker_list','["KRW-BTC"]',10,'Y'),
 	 ('dataset_generate_term','365',10,'Y'),
 	 ('scheduler_start_min','0',10,'Y'),
@@ -22,7 +22,7 @@ INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq
 	 ('col_f','["timestamp", "weekday", "OPEN", "HIGH", "LOW", "CLOSE", "VOLUME", "VOLUME_MA5", "VOLUME_MA20", "VOLUME_RATIO", "OBV", "VWAP", "VOLUME_VOLATILITY", "VOLUME_SPIKE", "RSI", "MACD", "MACD_SIGNAL", "BOLLINGER_PARTITION"]',8,'Y'),
 	 ('auto_back_test_seq','8',7,'Y'),
 	 ('auto_back_test','Y',7,'Y');
-INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,use_yn) VALUES
+INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,activate_yn) VALUES
 	 ('col_t','["by_ontime_change_after_1hour", "by_ontime_change_after_4hour", "by_ontime_change_after_12hour", "by_ontime_change_after_1day", "by_prev_change_after_1hour", "by_prev_change_after_4hour", "by_prev_change_after_12hour", "by_prev_change_after_1day"]',7,'Y'),
 	 ('col_f','["timestamp", "weekday", "OPEN", "HIGH", "LOW", "CLOSE", "VOLUME", "VOLUME_MA5", "VOLUME_MA20", "VOLUME_RATIO", "OBV", "VWAP", "VOLUME_VOLATILITY", "VOLUME_SPIKE","RSI", "MACD", "MACD_SIGNAL", "BOLLINGER_PARTITION"]',7,'Y'),
 	 ('scheduler_start_min','0',7,'Y'),
@@ -33,7 +33,7 @@ INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq
 	 ('early_stop','1',7,'Y'),
 	 ('epochs','20',7,'Y'),
 	 ('batch_size','32',7,'Y');
-INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,use_yn) VALUES
+INSERT INTO runnable_service_options (option_key,option_val,runnable_service_seq,activate_yn) VALUES
 	 ('time_steps','40',7,'Y'),
 	 ('dataset_load_term','730',7,'Y'),
 	 ('scheduler_start_min','0',6,'Y'),

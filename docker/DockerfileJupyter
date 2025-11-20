@@ -11,7 +11,8 @@ ENV SERVICE_NAME=jupyter
 
 WORKDIR ${APP_PATH}
 
-COPY ../apps ${APP_PATH}
+
+COPY ../apps/background ${APP_PATH}/background
 COPY ../shares ${APP_PATH}/shares
 COPY ../poetry.lock ${APP_PATH}
 COPY ../pyproject.toml ${APP_PATH}

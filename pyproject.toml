@@ -9,6 +9,7 @@ python = "3.10.9"
 requests = "<2.29.0"
 python-dotenv = "^0.15.0"
 PyYAML = "6.0.2"
+boto3 = "1.40.11"
 
 [tool.poetry.group.trading.dependencies]
 pyupbit = "0.2.21"
@@ -34,6 +35,10 @@ scipy = "^1.5.2"
 shap = "0.42.1"
 openpyxl = "3.1.5"
 
+[tool.poetry.group.stat-visual.dependencies]
+seaborn = "0.13.2"
+matplotlib = "3.10.3"
+
 [tool.poetry.group.ai.dependencies]
 catboost = "^1.1.1"
 h5py = "^3.9.0"
@@ -44,10 +49,12 @@ pyarrow = "^13.0.0"
 scikit-learn = "1.0.2"
 sklearn-pandas = "^1.8.0"
 xgboost = "1.7.4"
+torch = "2.7.1"
 treelite = "0.92"
 treelite-runtime = "0.92"
 gputil = "1.4.0"
 tqdm = "^4.48.2"
+mlflow = "2.22.1"
 
 [tool.poetry.group.jupyter.dependencies]
 notebook = "^7.0.0"

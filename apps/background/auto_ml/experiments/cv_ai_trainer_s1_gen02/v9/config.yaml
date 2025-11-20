@@ -1,0 +1,100 @@
+model_name: cv_ai_trainer_s1_gen02
+model_type: lstm_multiclass_classification
+features:
+    - weekday
+    - obv
+    - vwap
+    - open
+    - high
+    - low
+    - close
+    - close_vs_ma36
+    - volume_ma20
+    - atr
+    - bollinger_width
+    - macd
+    - macd_signal
+    - volatility_1h
+    - rolling_volatility
+    - volume_volatility
+    - close_vs_ma12
+    - roc
+    - hour_sin
+    - hour_cos
+    - weekday_sin
+    - weekday_cos
+    - day_of_month_sin
+    - day_of_month_cos
+    - month_sin
+    - month_cos
+    - minute_of_day_sin
+    - minute_of_day_cos
+    - price_zscore_20
+    - volume_zscore_20
+    - return_1_zscore_20
+    - ma36_slope_norm
+    - trend_over_vol
+    - obv_ma_ratio_20
+    - return_1h
+    - return_5h_mean
+    - volume_change
+    - volume_ma_ratio
+    - daily_close_price_at_9
+    - daily_close_price_at_22_30
+targets: 
+    - change_after_1day
+derived_params:
+    - bollinger_width
+    - rolling_volatility
+    - volatility_1h
+    - close_vs_ma12
+    - close_vs_ma36
+    - change_after_1day
+    - datetime
+    - hour_sin
+    - hour_cos
+    - weekday_sin
+    - weekday_cos
+    - day_of_month_sin
+    - day_of_month_cos
+    - month_sin
+    - month_cos
+    - minute_of_day_sin
+    - minute_of_day_cos
+    - price_zscore_20
+    - volume_zscore_20
+    - return_1_zscore_20
+    - ma36_slope_norm
+    - trend_over_vol
+    - obv_ma_ratio_20
+    - return_1h
+    - return_5h_mean
+    - volume_change
+    - volume_ma_ratio
+    - daily_close_price_at_9
+    - daily_close_price_at_22_30
+preprocesses:
+  fillna: 
+    cols: 
+      - all
+  cast_to_numeric: 
+    cols: 
+      - all
+  scaling: 
+    cols: 
+      - open
+      - high
+      - low
+      - volume_ma20
+      - obv
+      - vwap
+      - volume_volatility
+      - macd
+      - macd_signal
+      - atr
+      - roc
+hyperparameters:
+  time_steps: 60
+  batch_size: 64
+  epochs: 40
+  early_stop: True

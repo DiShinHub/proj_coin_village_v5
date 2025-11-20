@@ -19,10 +19,9 @@ class ProcessHandler():
     
     """
 
-    def __init__(self, execution_type):
+    def __init__(self):
         self.log = system_module_log
         self.runnable_services_dao = runnableServicesDao()
-        self.execution_type = execution_type
         
         self.processes = {}
             
@@ -31,7 +30,7 @@ class ProcessHandler():
         while True:
             
             # --- 데이터 셋팅
-            runnable_services = self.runnable_services_dao.get_runnable_services(execution_type=self.execution_type)
+            runnable_services = self.runnable_services_dao.get_runnable_services()
             
             seq_current_processes = list(self.processes.keys())                         # 현재 실행 중인 프로세스 시퀀스
             seq_runnable_services = [d['seq'] for d in runnable_services if 'seq' in d] # 실행 해야할 프로세스 시퀀스
@@ -39,7 +38,6 @@ class ProcessHandler():
             # --- 모든 시퀀스가 같지 않으면 
             if sorted(seq_current_processes) != sorted(seq_runnable_services):
                 
-                # 시퀀스 추출
                 include_seqs = list(set(seq_runnable_services) - set(seq_current_processes)) # 추가 대상 시퀀스
                 exclude_seqs = list(set(seq_current_processes) - set(seq_runnable_services)) # 제외 대상 시퀀스
                     
@@ -54,7 +52,6 @@ class ProcessHandler():
                     for exclude_seq in exclude_seqs:
                         self.kill_process(exclude_seq)
             
-            # sleep
             time.sleep(1) 
     
     def start_process(self, seq, execution_path, execution_class, execution_method):
@@ -86,13 +83,12 @@ class ProcessHandler():
     
     def kill_process(self, seq):
         
-        # --- 프로세스 킬
         if seq not in self.processes:
             return
         
         try:
             self.processes[seq].terminate()
-            self.processes[seq].join(timeout=10) # 10초 동안 기다리고, 여전히 살아 있으면 강제 종료함
+            self.processes[seq].join(timeout=10) 
             
             if self.processes[seq].is_alive():
                 os.kill(self.processes[seq].pid, signal.SIGKILL)  

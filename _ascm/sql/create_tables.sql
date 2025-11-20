@@ -11,7 +11,7 @@ CREATE TABLE public.runnable_services (
 	reg_member_seq int4 NOT NULL,
 	mod_dt timestamptz NULL,
 	mod_member_seq int4 NOT NULL,
-	use_yn varchar(1) DEFAULT 'Y'::character varying NOT NULL,
+	activate_yn varchar(1) DEFAULT 'Y'::character varying NOT NULL,
 	CONSTRAINT runnable_services_pkey PRIMARY KEY (seq),
 	CONSTRAINT ux_runnable_service_execution_path UNIQUE (execution_path)
 );
@@ -25,7 +25,7 @@ CREATE TABLE public.runnable_service_options (
 	option_key varchar(100) NOT NULL,
 	option_val varchar(1000) NOT NULL,
 	runnable_service_seq int4 NOT NULL,
-	use_yn varchar(1) DEFAULT 'Y'::character varying NOT NULL,
+	activate_yn varchar(1) DEFAULT 'Y'::character varying NOT NULL,
 	CONSTRAINT runnable_service_options_pkey PRIMARY KEY (seq)
 );
 

@@ -49,8 +49,6 @@ class Upbit():
         """
         return self.ticker
     
-    
-    
     """
     No Auth
     """
@@ -382,6 +380,9 @@ class Upbit():
     def get_technical_indicator(self, df):
         
         if df is None or len(df) < 35:
+            self.log.info(f'df : {df}')
+            self.log.info(f'df : {df.head()}')
+            self.log.info(f'df : {len(df)}')
             raise ValueError("Not enough data")
 
         # -- 거래량 이동 평균 (5분, 20분)

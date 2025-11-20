@@ -1,0 +1,27 @@
+model_name: cv_ai_trainer_s1_gen02
+model_type: lstm_multiclass_classification
+features:
+    - feature_1
+    - feature_2
+    - derived_param_1
+    - derived_param_2
+targets: 
+    - target_1
+    - target_2
+derived_params:
+    - derived_param_1
+    - derived_param_2
+preprocesses:
+  fillna: 
+    cols: 
+      - all
+  cast_to_numeric: 
+    cols: 
+      - all
+  scaling: 
+    cols: 
+      - feature_1
+      - feature_2
+hyperparameters:
+  hyperparameter_1: 80
+  hyperparameter_2: True

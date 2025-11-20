@@ -1,10 +1,14 @@
 import datetime
+from datetime import  timedelta
 import time
 
-from datetime import  timedelta
 
 import ast
 import json
+
+import importlib.util
+import os
+import inspect
 
 def generate_now_date():
     """ 
@@ -246,6 +250,25 @@ def cal_weekday_code(date_string):
     weekday = weekdays[date_object.weekday()]
     return weekday
 
+def generate_weekday_kor():
+    """ 
+    def description : 요일 산출
+
+    Returns
+    -------
+    change_rate : 요일
+    """
+    # 현재 시간 구하기
+    now = datetime.datetime.now()
+
+    # 요일 번호 (0:월, 1:화, ..., 6:일)
+    weekday_index = now.weekday()
+
+    # 한글 요일 리스트 (월 ~ 일)
+    kor_weekdays = ['월', '화', '수', '목', '금', '토', '일']
+    kor_weekday = kor_weekdays[weekday_index]
+    return kor_weekday
+
 def sort_by_current_price(data_list):
     """ 
     def description : 현재가 기준으로 정렬 
@@ -445,3 +468,30 @@ def map_interval_to_interval_min(interval):
         interval_min = 24*60
     
     return interval_min
+
+def load_class_from_file(file_path: str, class_name: str):
+    
+    # 파일 이름에서 모듈 이름 생성 (확장자 제외)
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+
+    # 모듈 스펙 로드
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec is None:
+        raise ImportError(f"Cannot find spec for {file_path}")
+    
+    # 모듈 객체 생성 및 실행
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore
+
+    # 클래스 가져오기
+    cls = getattr(module, class_name, None)
+    if cls is None:
+        raise AttributeError(f"Class '{class_name}' not found in {file_path}")
+    
+    return cls
+
+def run_from_method_name(obj, method_name):
+    method = getattr(obj, method_name)
+    result = method()
+    return result
+

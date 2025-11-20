@@ -8,12 +8,11 @@ class runnableServicesDao():
     """
     runnable_service
     """
-    def get_runnable_services(self, execution_type):
+    def get_runnable_services(self):
 
         query = f"""
             SELECT
                 seq,
-                execution_type,
                 execution_path,
                 execution_class,
                 execution_method,
@@ -22,12 +21,11 @@ class runnableServicesDao():
                 reg_member_seq,
                 mod_dt,
                 mod_member_seq,
-                use_yn
+                activate_yn
             FROM
                 runnable_services
             WHERE
-                execution_type = '{execution_type}'
-                AND use_yn = 'Y'
+                activate_yn = 'Y'
             ORDER BY
                 seq ASC;
         """
@@ -65,7 +63,7 @@ class runnableServicesDao():
     """
     def get_runnable_service_option(self, seq=None, option_key=None, option_val=None,runnable_service_seq=None):
         
-        where_cluase = f"WHERE use_yn = 'Y'"
+        where_cluase = f"WHERE activate_yn = 'Y'"
         if seq:
             where_cluase += f" AND seq = {seq}"
         
@@ -102,7 +100,7 @@ class runnableServicesDao():
                 runnable_service_options
             WHERE 
                 runnable_service_seq = {runnable_service_seq}
-                AND use_yn = 'Y' 
+                AND activate_yn = 'Y' 
             ORDER BY
                 seq ASC;
         """
@@ -124,7 +122,7 @@ class runnableServicesDao():
     
         query = f"""
             INSERT INTO public.runnable_service_options
-                (seq, option_key, option_val, runnable_service_seq, use_yn)
+                (seq, option_key, option_val, runnable_service_seq, activate_yn)
                 VALUES(nextval('runnable_service_options_seq_seq'::regclass), '{option_key}', '{option_val}', {runnable_service_seq}, 'Y');
         """ 
         

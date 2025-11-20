@@ -81,8 +81,21 @@ class Config:
         client = Client(binance_access_key, binance_secret_key)
 
         return client
+    
+    def set_kis(self):
+
+        kis_app_key = os.getenv("KIS_APP_KEY")
+        kis_secret_key = os.getenv("KIS_SECRET_KEY")
+        return kis_app_key, kis_secret_key
 
     def set_exchange_rate(self):
         
         exchage_rate_key = os.getenv("EXCHAGE_RATE_KEY")
         return exchage_rate_key
+    
+    def set_notion(self):
+        
+        notion_key = os.getenv("NOTION_KEY")
+        return notion_key
+        
+        
